@@ -1,19 +1,8 @@
--- ==============================================================================
--- SISTEMA DE GESTIÓN HOTELERA
-<<<<<<< HEAD
--- Script INIT final
--- MySQL 8+
--- ==============================================================================
-
 CREATE DATABASE IF NOT EXISTS hotel_dsoo
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE hotel_dsoo;
-
--- ==============================================================================
--- 0. LIMPIEZA PREVIA
--- ==============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
 

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, Phone, ChevronRight, Menu, X, Shield, BedDouble, Crown, UtensilsCrossed, Smile, ClipboardList, Sparkles } from "lucide-react";
+import { MapPin, Phone, ChevronRight, Menu, X, Shield, BedDouble, Crown, UtensilsCrossed, Smile, ClipboardList, Sparkles, FileBarChart2 } from "lucide-react";
 import { useState } from "react";
 
 const fadeUp = {
@@ -56,6 +56,7 @@ export default function Home() {
     { href: "/kids-club", icon: Smile, badge: "Entretenimiento", title: "Kids Club", desc: "Inscripción y control de actividades infantiles." },
     { href: "/higiene-alojamiento", icon: Sparkles, badge: "Operaciones", title: "Higiene y Alojamiento", desc: "Ciclo de limpieza y privacidad de habitaciones." },
     { href: "/bitacora-restaurante", icon: ClipboardList, badge: "Bitácora", title: "Bitácora del Restaurante", desc: "Registro de check-in y estado de turnos." },
+    { href: "/reportes", icon: FileBarChart2, badge: "Reportes", title: "Reportes de Villas y Servicios", desc: "Estadísticas de ocupación, ingresos y uso de servicios." },
   ];
 
   return (
