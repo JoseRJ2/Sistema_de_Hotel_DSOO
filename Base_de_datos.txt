@@ -1,0 +1,181 @@
+// ==========================================
+// 1. CATÁLOGOS BASE Y SEGURIDAD
+// ==========================================
+Table Roles {
+  id_rol int [pk, increment]
+  nombre varchar(50) [unique, not null]
+}
+
+Table TiposCliente {
+  id_tipo_cliente int [pk, increment]
+  nombre varchar(50) [unique, not null]
+  nivel_prioridad int [not null, note: '1=Estandar, 2=Premium, 3=VIP']
+}
+
+Table Usuarios {
+  id_usuario int [pk, increment]
+  id_rol int [not null]
+  id_tipo_cliente int [note: 'Nulo si es Empleado, aplica solo a Clientes']
+  nombre_completo varchar(150) [not null]
+  email varchar(100) [unique, not null]
+  password_hash varchar(255) [not null]
+  telefono varchar(20)
+  fecha_registro datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Membresias {
+  id_membresia int [pk, increment]
+  id_usuario int [not null]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  estado varchar [default: 'Activa']
+}
+
+// ==========================================
+// 2. ALOJAMIENTOS Y RESERVAS (HOTEL/VILLAS)
+// ==========================================
+Table CategoriasAlojamiento {
+  id_categoria int [pk, increment]
+  nombre varchar(50) [not null]
+  estancia_minima int [default: 1, note: 'Las villas tendran 2 aqui']
+  requiere_nivel_cliente int [default: 1]
+}
+
+Table Alojamientos {
+  id_alojamiento int [pk, increment]
+  id_categoria int [not null]
+  numero_identificador varchar(20) [unique, not null]
+  capacidad_maxima int [not null]
+  precio_por_noche decimal(10, 2) [not null]
+  estado varchar [default: 'Disponible']
+}
+
+Table ReservasHospedaje {
+  id_reserva int [pk, increment]
+  id_usuario int [not null]
+  id_alojamiento int [not null]
+  fecha_checkin date [not null]
+  fecha_checkout date [not null]
+  numero_adultos int [not null, default: 1]
+  numero_ninos int [not null, default: 0]
+  costo_total decimal(10, 2) [not null]
+  estado varchar [default: 'Pendiente']
+  fecha_creacion datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Pagos {
+  id_pago int [pk, increment]
+  id_reserva int [not null]
+  monto decimal(10, 2) [not null]
+  metodo_pago varchar [not null, note: 'Tarjeta, Efectivo, Transferencia']
+  estado_pago varchar [default: 'Completado']
+  fecha_pago datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+// ==========================================
+// 3. AMENIDADES DINÁMICAS
+// ==========================================
+Table Amenidades {
+  id_amenidad int [pk, increment]
+  nombre varchar(100) [not null]
+  descripcion text
+  capacidad_maxima int [not null]
+  hora_apertura time [not null]
+  hora_cierre time [not null]
+  id_nivel_cliente_requerido int [not null]
+}
+
+Table ReservasAmenidad {
+  id_reserva_amenidad int [pk, increment]
+  id_usuario int [not null]
+  id_amenidad int [not null]
+  fecha_reserva date [not null]
+  hora_inicio time [not null]
+  hora_fin time [not null]
+  estado varchar [default: 'Activa']
+}
+
+// ==========================================
+// 4. RESTAURANTE
+// ==========================================
+Table Restaurantes {
+  id_restaurante int [pk, increment]
+  nombre varchar(100) [not null]
+  capacidad_maxima int [not null]
+}
+
+Table TurnosComida {
+  id_turno int [pk, increment]
+  id_restaurante int [not null]
+  fecha date [not null]
+  tipo_turno varchar [not null]
+  capacidad_disponible int [not null]
+}
+
+Table ReservasRestaurante {
+  id_reserva_rest int [pk, increment]
+  id_usuario int [not null]
+  id_turno int [not null]
+  numero_comensales int [not null]
+  estado varchar [default: 'Pendiente']
+}
+
+// ==========================================
+// 5. KIDS CLUB
+// ==========================================
+Table ActividadesKidsClub {
+  id_actividad int [pk, increment]
+  nombre varchar(100) [not null]
+  edad_minima int [not null]
+  edad_maxima int [not null]
+  capacidad_disponible int [not null]
+  fecha_hora_inicio datetime [not null]
+}
+
+Table InscripcionesNino {
+  id_inscripcion int [pk, increment]
+  id_actividad int [not null]
+  id_tutor int [not null]
+  nombre_nino varchar(100) [not null]
+  edad_nino int [not null]
+  hora_entrada datetime
+  hora_salida datetime
+  estado varchar [default: 'Registrada']
+}
+
+// ==========================================
+// 6. BITÁCORA Y AUDITORÍA
+// ==========================================
+Table RegistroAuditoria {
+  id_registro int [pk, increment]
+  id_usuario int
+  fecha_hora datetime [default: `CURRENT_TIMESTAMP`]
+  accion varchar(100) [not null]
+  descripcion text [not null]
+}
+
+// ==========================================
+// DEFINICIÓN DE RELACIONES (FOREIGN KEYS)
+// ==========================================
+
+Ref: Usuarios.id_rol > Roles.id_rol
+Ref: Usuarios.id_tipo_cliente > TiposCliente.id_tipo_cliente
+Ref: Membresias.id_usuario > Usuarios.id_usuario
+
+Ref: Alojamientos.id_categoria > CategoriasAlojamiento.id_categoria
+Ref: ReservasHospedaje.id_usuario > Usuarios.id_usuario
+Ref: ReservasHospedaje.id_alojamiento > Alojamientos.id_alojamiento
+Ref: Pagos.id_reserva > ReservasHospedaje.id_reserva
+
+Ref: Amenidades.id_nivel_cliente_requerido > TiposCliente.id_tipo_cliente
+Ref: ReservasAmenidad.id_usuario > Usuarios.id_usuario
+Ref: ReservasAmenidad.id_amenidad > Amenidades.id_amenidad
+
+Ref: TurnosComida.id_restaurante > Restaurantes.id_restaurante
+Ref: ReservasRestaurante.id_usuario > Usuarios.id_usuario
+Ref: ReservasRestaurante.id_turno > TurnosComida.id_turno
+
+Ref: InscripcionesNino.id_actividad > ActividadesKidsClub.id_actividad
+Ref: InscripcionesNino.id_tutor > Usuarios.id_usuario
+
+Ref: RegistroAuditoria.id_usuario > Usuarios.id_usuario

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: hotel_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword # Contraseña del superusuario
+      MYSQL_DATABASE: hotel_dsoo      # Nombre de la base de datos
+      MYSQL_USER: admin_hotel         # Usuario 
+      MYSQL_PASSWORD: secretpassword  # Contraseña del usuario
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: hotel_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
+volumes:
+  db_data: 

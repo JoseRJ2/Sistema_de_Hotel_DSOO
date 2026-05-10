@@ -1,0 +1,458 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Alojamiento {
+  id_alojamiento    Int                        @id @default(autoincrement())
+  numero_o_nombre   String                     @unique(map: "numero_o_nombre") @db.VarChar(50)
+  tipo              Alojamiento_tipo
+  estado            Alojamiento_estado         @default(DISPONIBLE)
+  estado_higiene    Alojamiento_estado_higiene @default(LIMPIA)
+  privacidad_activa Boolean                    @default(false)
+  capacidad_maxima  Int
+  precio_base       Decimal                    @db.Decimal(10, 2)
+  descripcion       String?                    @db.Text
+  RegistroLimpieza  RegistroLimpieza[]
+  Reserva           Reserva[]
+}
+
+model AreaAmenidad {
+  id_area                 Int                       @id @default(autoincrement())
+  nombre                  String                    @db.VarChar(100)
+  tipo                    AreaAmenidad_tipo
+  estado                  AreaAmenidad_estado       @default(DISPONIBLE)
+  capacidad_maxima        Int
+  es_paso_critico         Boolean                   @default(false)
+  sello_higiene_visible   Boolean                   @default(true)
+  HorarioAmenidad         HorarioAmenidad[]
+  ProgramacionHigieneArea ProgramacionHigieneArea[]
+  RegistroLimpieza        RegistroLimpieza[]
+  ReservaAmenidad         ReservaAmenidad[]
+  ServicioRestaurante     ServicioRestaurante[]
+}
+
+model Beneficio {
+  id_beneficio         Int     @id @default(autoincrement())
+  id_rol               Int
+  nombre               String  @db.VarChar(100)
+  descripcion          String? @db.Text
+  acceso_villas        Boolean @default(false)
+  tipo_amenidades      String? @db.VarChar(100)
+  prioridad_reserva    String? @db.VarChar(100)
+  politica_cancelacion String? @db.VarChar(255)
+  Rol                  Rol     @relation(fields: [id_rol], references: [id_rol], map: "fk_beneficio_rol")
+
+  @@index([id_rol], map: "idx_beneficio_rol")
+}
+
+model ChecklistHigieneArea {
+  id_checklist     Int              @id @default(autoincrement())
+  id_registro      Int
+  tarea            String           @db.VarChar(150)
+  completada       Boolean          @default(false)
+  observaciones    String?          @db.Text
+  RegistroLimpieza RegistroLimpieza @relation(fields: [id_registro], references: [id_registro], onDelete: Cascade, map: "fk_checklist_registro")
+
+  @@index([id_registro], map: "fk_checklist_registro")
+}
+
+model Cliente {
+  id_cliente               Int               @id @default(autoincrement())
+  id_usuario               Int               @unique(map: "id_usuario")
+  numero_cliente           String            @unique(map: "numero_cliente") @db.VarChar(20)
+  telefono                 String?           @db.VarChar(20)
+  documento_identificacion String?           @db.VarChar(50)
+  direccion                String?           @db.VarChar(255)
+  fecha_registro           DateTime          @db.Date
+  Usuario                  Usuario           @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, map: "fk_cliente_usuario")
+  Membresia                Membresia[]
+  Reserva                  Reserva[]
+  ReservaAmenidad          ReservaAmenidad[]
+
+  @@index([id_usuario], map: "idx_cliente_usuario")
+}
+
+model ConsumoInsumo {
+  id_consumo       Int              @id @default(autoincrement())
+  id_registro      Int
+  id_insumo        Int
+  cantidad         Decimal          @db.Decimal(10, 2)
+  observaciones    String?          @db.Text
+  Insumo           Insumo           @relation(fields: [id_insumo], references: [id_insumo], onDelete: Cascade, map: "fk_consumo_insumo")
+  RegistroLimpieza RegistroLimpieza @relation(fields: [id_registro], references: [id_registro], onDelete: Cascade, map: "fk_consumo_registro")
+
+  @@index([id_insumo], map: "idx_consumo_insumo")
+  @@index([id_registro], map: "idx_consumo_registro")
+}
+
+model HorarioAmenidad {
+  id_horario        Int                        @id @default(autoincrement())
+  id_area           Int
+  dia_semana        HorarioAmenidad_dia_semana
+  hora_inicio       DateTime                   @db.Time(0)
+  hora_fin          DateTime                   @db.Time(0)
+  cupo_base         Int
+  buffer_vip        Int                        @default(0)
+  exclusivo_premium Boolean                    @default(false)
+  exclusivo_vip     Boolean                    @default(false)
+  AreaAmenidad      AreaAmenidad               @relation(fields: [id_area], references: [id_area], onDelete: Cascade, map: "fk_horario_amenidad_area")
+  ReservaAmenidad   ReservaAmenidad[]
+
+  @@index([id_area, dia_semana], map: "idx_horario_area_dia")
+}
+
+model Insumo {
+  id_insumo     Int              @id @default(autoincrement())
+  nombre        String           @db.VarChar(100)
+  categoria     Insumo_categoria
+  stock_actual  Decimal          @default(0.00) @db.Decimal(10, 2)
+  stock_minimo  Decimal          @default(0.00) @db.Decimal(10, 2)
+  unidad_medida String           @db.VarChar(30)
+  activo        Boolean          @default(true)
+  ConsumoInsumo ConsumoInsumo[]
+}
+
+model Membresia {
+  id_membresia Int              @id @default(autoincrement())
+  id_cliente   Int
+  plan_meses   Int
+  fecha_inicio DateTime         @db.Date
+  fecha_fin    DateTime         @db.Date
+  estado       Membresia_estado @default(ACTIVA)
+  costo_total  Decimal          @db.Decimal(10, 2)
+  Cliente      Cliente          @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade, map: "fk_membresia_cliente")
+
+  @@index([id_cliente], map: "idx_membresia_cliente")
+}
+
+model Notificacion {
+  id_notificacion Int               @id @default(autoincrement())
+  id_usuario      Int
+  tipo            Notificacion_tipo
+  asunto          String            @db.VarChar(200)
+  mensaje         String            @db.Text
+  destinatario    String            @db.VarChar(100)
+  fecha_envio     DateTime          @default(now()) @db.DateTime(0)
+  enviada         Boolean           @default(false)
+  Usuario         Usuario           @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, map: "fk_notificacion_usuario")
+
+  @@index([id_usuario], map: "idx_notificacion_usuario")
+}
+
+model Pago {
+  id_pago     Int              @id @default(autoincrement())
+  id_reserva  Int
+  monto       Decimal          @db.Decimal(10, 2)
+  fecha_pago  DateTime         @default(now()) @db.DateTime(0)
+  metodo_pago Pago_metodo_pago
+  estado_pago Pago_estado_pago @default(PENDIENTE)
+  referencia  String?          @db.VarChar(100)
+  Reserva     Reserva          @relation(fields: [id_reserva], references: [id_reserva], onDelete: Cascade, map: "fk_pago_reserva")
+
+  @@index([id_reserva], map: "fk_pago_reserva")
+}
+
+model Permiso {
+  id_permiso  Int           @id @default(autoincrement())
+  nombre      String        @db.VarChar(100)
+  recurso     String        @db.VarChar(100)
+  accion      String        @db.VarChar(100)
+  Rol_Permiso Rol_Permiso[]
+}
+
+model ProgramacionHigieneArea {
+  id_programacion     Int                                         @id @default(autoincrement())
+  id_area             Int
+  id_usuario_asignado Int
+  tipo_higiene        ProgramacionHigieneArea_tipo_higiene
+  fecha_programada    DateTime                                    @db.Date
+  hora_programada     DateTime                                    @db.Time(0)
+  estado_programacion ProgramacionHigieneArea_estado_programacion @default(PENDIENTE)
+  observaciones       String?                                     @db.Text
+  AreaAmenidad        AreaAmenidad                                @relation(fields: [id_area], references: [id_area], onDelete: Cascade, map: "fk_programacion_area")
+  Usuario             Usuario                                     @relation(fields: [id_usuario_asignado], references: [id_usuario], onDelete: Cascade, map: "fk_programacion_usuario")
+
+  @@index([id_area, fecha_programada], map: "idx_programacion_area_fecha")
+  @@index([id_usuario_asignado], map: "idx_programacion_usuario")
+}
+
+model RegistroAuditoria {
+  id_registro      Int      @id @default(autoincrement())
+  fecha_hora       DateTime @default(now()) @db.DateTime(0)
+  accion           String   @db.VarChar(100)
+  entidad_afectada String   @db.VarChar(100)
+  id_entidad       Int
+  descripcion      String?  @db.Text
+  ip_origen        String?  @db.VarChar(45)
+}
+
+model RegistroLimpieza {
+  id_registro                  Int                           @id @default(autoincrement())
+  id_solicitud                 Int?
+  id_alojamiento               Int?
+  id_area                      Int?
+  id_usuario_personal          Int
+  fecha_inicio                 DateTime?                     @db.DateTime(0)
+  fecha_fin                    DateTime?                     @db.DateTime(0)
+  checklist_completo           Boolean                       @default(false)
+  observaciones                String?                       @db.Text
+  ChecklistHigieneArea         ChecklistHigieneArea[]
+  ConsumoInsumo                ConsumoInsumo[]
+  Alojamiento                  Alojamiento?                  @relation(fields: [id_alojamiento], references: [id_alojamiento], map: "fk_registro_limpieza_alojamiento")
+  AreaAmenidad                 AreaAmenidad?                 @relation(fields: [id_area], references: [id_area], map: "fk_registro_limpieza_area")
+  SolicitudServicioAlojamiento SolicitudServicioAlojamiento? @relation(fields: [id_solicitud], references: [id_solicitud], map: "fk_registro_limpieza_solicitud")
+  Usuario                      Usuario                       @relation(fields: [id_usuario_personal], references: [id_usuario], onDelete: Cascade, map: "fk_registro_limpieza_usuario")
+
+  @@index([id_solicitud], map: "fk_registro_limpieza_solicitud")
+  @@index([id_alojamiento], map: "idx_registro_alojamiento")
+  @@index([id_area], map: "idx_registro_area")
+  @@index([id_usuario_personal], map: "idx_registro_usuario")
+}
+
+model Reserva {
+  id_reserva                   Int                            @id @default(autoincrement())
+  id_cliente                   Int
+  id_alojamiento               Int
+  fecha_reserva                DateTime                       @default(now()) @db.DateTime(0)
+  fecha_checkin                DateTime                       @db.Date
+  fecha_checkout               DateTime                       @db.Date
+  estado                       Reserva_estado                 @default(PENDIENTE)
+  numero_huespedes             Int
+  Pago                         Pago[]
+  Alojamiento                  Alojamiento                    @relation(fields: [id_alojamiento], references: [id_alojamiento], onDelete: Cascade, map: "fk_reserva_alojamiento")
+  Cliente                      Cliente                        @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade, map: "fk_reserva_cliente")
+  SolicitudServicioAlojamiento SolicitudServicioAlojamiento[]
+
+  @@index([id_alojamiento], map: "idx_reserva_alojamiento")
+  @@index([id_cliente], map: "idx_reserva_cliente")
+}
+
+model ReservaAmenidad {
+  id_reserva_amenidad Int                    @id @default(autoincrement())
+  id_cliente          Int
+  id_area             Int
+  id_horario          Int
+  fecha_reserva       DateTime               @db.Date
+  cantidad_personas   Int                    @default(1)
+  estado              ReservaAmenidad_estado @default(PENDIENTE)
+  recordatorio        Boolean                @default(false)
+  observaciones       String?                @db.Text
+  AreaAmenidad        AreaAmenidad           @relation(fields: [id_area], references: [id_area], onDelete: Cascade, map: "fk_reserva_amenidad_area")
+  Cliente             Cliente                @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade, map: "fk_reserva_amenidad_cliente")
+  HorarioAmenidad     HorarioAmenidad        @relation(fields: [id_horario], references: [id_horario], onDelete: Cascade, map: "fk_reserva_amenidad_horario")
+
+  @@index([id_horario], map: "fk_reserva_amenidad_horario")
+  @@index([id_cliente], map: "idx_reserva_amenidad_cliente")
+  @@index([id_area, fecha_reserva], map: "idx_reserva_amenidad_fecha")
+}
+
+model Rol {
+  id_rol      Int           @id @default(autoincrement())
+  nombre      String        @unique(map: "nombre") @db.VarChar(100)
+  descripcion String?       @db.VarChar(255)
+  Beneficio   Beneficio[]
+  Rol_Permiso Rol_Permiso[]
+  Usuario     Usuario[]
+}
+
+model Rol_Permiso {
+  id_rol     Int
+  id_permiso Int
+  Permiso    Permiso @relation(fields: [id_permiso], references: [id_permiso], onDelete: Cascade, map: "fk_rol_permiso_permiso")
+  Rol        Rol     @relation(fields: [id_rol], references: [id_rol], onDelete: Cascade, map: "fk_rol_permiso_rol")
+
+  @@id([id_rol, id_permiso])
+  @@index([id_permiso], map: "fk_rol_permiso_permiso")
+}
+
+model ServicioRestaurante {
+  id_servicio   Int                               @id @default(autoincrement())
+  id_area       Int
+  turno         ServicioRestaurante_turno
+  tipo_servicio ServicioRestaurante_tipo_servicio
+  AreaAmenidad  AreaAmenidad                      @relation(fields: [id_area], references: [id_area], onDelete: Cascade, map: "fk_servicio_restaurante_area")
+
+  @@index([id_area], map: "fk_servicio_restaurante_area")
+}
+
+model SolicitudServicioAlojamiento {
+  id_solicitud       Int                                           @id @default(autoincrement())
+  id_reserva         Int
+  tipo_solicitud     SolicitudServicioAlojamiento_tipo_solicitud
+  estado_solicitud   SolicitudServicioAlojamiento_estado_solicitud @default(SOLICITADA)
+  fecha_solicitud    DateTime                                      @default(now()) @db.DateTime(0)
+  fecha_programada   DateTime?                                     @db.Date
+  horario_programado String?                                       @db.VarChar(30)
+  observaciones      String?                                       @db.Text
+  RegistroLimpieza   RegistroLimpieza[]
+  Reserva            Reserva                                       @relation(fields: [id_reserva], references: [id_reserva], onDelete: Cascade, map: "fk_solicitud_reserva")
+
+  @@index([id_reserva], map: "idx_solicitud_reserva")
+}
+
+model Usuario {
+  id_usuario              Int                       @id @default(autoincrement())
+  id_rol                  Int
+  nombre_completo         String                    @db.VarChar(150)
+  correo_electronico      String                    @unique(map: "correo_electronico") @db.VarChar(100)
+  contrasena_hash         String                    @db.VarChar(255)
+  activo                  Boolean                   @default(true)
+  fecha_registro          DateTime                  @default(now()) @db.DateTime(0)
+  ultimo_acceso           DateTime?                 @db.DateTime(0)
+  Cliente                 Cliente?
+  Notificacion            Notificacion[]
+  ProgramacionHigieneArea ProgramacionHigieneArea[]
+  RegistroLimpieza        RegistroLimpieza[]
+  Rol                     Rol                       @relation(fields: [id_rol], references: [id_rol], map: "fk_usuario_rol")
+
+  @@index([correo_electronico], map: "idx_usuario_correo")
+  @@index([id_rol], map: "idx_usuario_rol")
+}
+
+enum Alojamiento_tipo {
+  HABITACION_ESTANDAR
+  HABITACION_DELUXE
+  SUITE
+  VILLA_PREMIUM
+}
+
+enum AreaAmenidad_tipo {
+  SPA
+  GIMNASIO
+  PISCINA
+  CLASE_WELLNESS
+  KIDS_CLUB
+  RESTAURANTE
+  LOBBY
+  PASILLO
+  OTRA
+}
+
+enum HorarioAmenidad_dia_semana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+  DOMINGO
+}
+
+enum Insumo_categoria {
+  LIMPIEZA
+  LAVANDERIA
+  AMENIDAD
+  OTRO
+}
+
+enum Notificacion_tipo {
+  CORREO
+  SISTEMA
+  PUSH
+}
+
+enum ServicioRestaurante_turno {
+  DESAYUNO
+  COMIDA
+  CENA
+}
+
+enum SolicitudServicioAlojamiento_tipo_solicitud {
+  PROGRAMAR_LIMPIEZA
+  NO_MOLESTAR
+  SALTAR_LIMPIEZA_HOY
+}
+
+enum Alojamiento_estado {
+  DISPONIBLE
+  OCUPADA
+  SUCIA
+  EN_LIMPIEZA
+  MANTENIMIENTO
+  NO_MOLESTAR
+  INACTIVA
+}
+
+enum AreaAmenidad_estado {
+  DISPONIBLE
+  LIMPIA
+  EN_MANTENIMIENTO
+  LIMPIEZA_PROFUNDA
+  BLOQUEADA
+}
+
+enum ProgramacionHigieneArea_tipo_higiene {
+  RUTINARIA
+  PROFUNDA
+  REFRESCO
+}
+
+enum ServicioRestaurante_tipo_servicio {
+  BUFFET
+  A_LA_CARTA
+}
+
+enum SolicitudServicioAlojamiento_estado_solicitud {
+  SOLICITADA
+  VALIDADA
+  REPROGRAMADA
+  ATENDIDA
+  CANCELADA
+  RECHAZADA
+}
+
+enum Alojamiento_estado_higiene {
+  LIMPIA
+  SUCIA
+  PROGRAMADA
+  EN_ESPERA
+  EN_LIMPIEZA
+  REPOSICION_INSUMOS
+}
+
+enum Pago_metodo_pago {
+  EFECTIVO
+  TARJETA_CREDITO
+}
+
+enum Membresia_estado {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+}
+
+enum Pago_estado_pago {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  REEMBOLSADO
+}
+
+enum ProgramacionHigieneArea_estado_programacion {
+  PENDIENTE
+  EN_PROCESO
+  FINALIZADA
+  POSPUESTA
+  CANCELADA
+}
+
+enum Reserva_estado {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  COMPLETADA
+}
+
+enum ReservaAmenidad_estado {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  FINALIZADA
+  LISTA_ESPERA
+  RECHAZADA
+}
