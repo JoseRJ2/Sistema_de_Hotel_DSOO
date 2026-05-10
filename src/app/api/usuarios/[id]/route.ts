@@ -60,6 +60,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json(actualizado);
     }
 
+    if (accion === 'ELIMINAR') {
+      const adminsActivos = await withPrismaRetry(prisma =>
+        prisma.usuario.count({ where: { id_rol: 1, activo: true } })
+      );
+      if (usuario.id_rol === 1 && adminsActivos <= 1) {
+        return NextResponse.json({ error: 'No se puede eliminar el último administrador' }, { status: 400 });
+      }
+
+      await withPrismaRetry(prisma => prisma.cliente.deleteMany({ where: { id_usuario: id } }));
+      await withPrismaRetry(prisma => prisma.notificacion.deleteMany({ where: { id_usuario: id } }));
+      await withPrismaRetry(prisma => prisma.usuario.delete({ where: { id_usuario: id } }));
+
+      await withPrismaRetry(prisma =>
+        prisma.registroAuditoria.create({
+          data: {
+            accion: 'ELIMINAR_USUARIO', entidad_afectada: 'Usuario', id_entidad: id,
+            descripcion: `Usuario ${usuario.nombre_completo} eliminado permanentemente`,
+            ip_origen: '127.0.0.1', fecha_hora: new Date(),
+          },
+        })
+      );
+      return NextResponse.json({ ok: true, mensaje: 'Usuario eliminado' });
+    }
+
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 });
   } catch {
     return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
