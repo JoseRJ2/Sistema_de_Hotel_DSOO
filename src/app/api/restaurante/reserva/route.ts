@@ -30,7 +30,7 @@ class TurnoComida {
     console.log(`[1.2] Ocupación actual: ${ocupados}/50`);
 
     // REGLA DE NEGOCIO 70/30
-    if (membresia === 'CLIENTE_REGULAR' || membresia === 'ESTÁNDAR') {
+    if (membresia === 'ESTANDAR' || membresia === 'ESTÁNDAR' || membresia === 'CLIENTE_REGULAR') {
       // Si es regular, vemos si sumando estos comensales superan el límite de 35
       if ((ocupados + comensales) > LIMITE_REGULAR) {
         console.log(`[1.2] Bloqueado. Capacidad regular llena. Solo VIP/Premium.`);
