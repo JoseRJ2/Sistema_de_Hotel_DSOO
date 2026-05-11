@@ -31,3 +31,12 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+select, input, label, option {
+  color: #0A0A0A !important;
+}
+
+select option {
+  color: #0A0A0A !important;
+  background: #FFFFFF !important;
+}

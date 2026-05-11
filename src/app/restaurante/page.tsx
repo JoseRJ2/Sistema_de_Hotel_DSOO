@@ -2,127 +2,124 @@
 
 import { useReservaRestaurante } from "@/hooks/useReservaRestaurante";
 
-export default function Home() {
-  const { formData, handleChange, handleSubmit } = useReservaRestaurante();
+export default function ReservarRestaurantePage() {
+  const { formData, handleChange, capturarDatosReserva, mensaje, clienteActual, turnosDisponibles } = useReservaRestaurante();
 
   return (
-    <main className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <main className="min-h-screen bg-gray-50 py-12 px-4 font-sans text-gray-800">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         
-        {/* Encabezado elegante */}
-        <div className="bg-slate-900 px-8 py-6 text-center">
-          <h2 className="text-3xl font-serif font-bold text-amber-500">
-            Reserva de Restaurante
-          </h2>
-          <p className="mt-2 text-slate-300 text-sm">
-            Asegure su mesa y disfrute de una experiencia gastronómica inolvidable.
-          </p>
+        <div className="bg-white px-8 py-8 text-center border-b border-gray-100">
+          <h2 className="text-3xl font-serif font-bold text-gray-900 tracking-wide">Reservar en Restaurante</h2>
+          <div className="mt-4 inline-block px-4 py-1.5 rounded-full bg-amber-50 border border-amber-100">
+            <p className="text-xs uppercase tracking-widest text-gray-600">
+              Cliente: <span className="text-gray-900 font-semibold mr-2">{clienteActual.nombre}</span>
+              Membresía: <span className="text-amber-600 font-bold">{clienteActual.membresia}</span>
+            </p>
+          </div>
         </div>
 
-        {/* Formulario */}
         <div className="p-8">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            
+          {mensaje.texto && (
+            <div className={`p-4 mb-6 rounded-lg border ${
+              mensaje.tipo === 'error' 
+                ? 'bg-red-50 border-red-200 text-red-700' 
+                : 'bg-green-50 border-green-200 text-green-700'
+            }`}>
+              {mensaje.texto}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={capturarDatosReserva}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Campo: Fecha */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de la Reserva</label>
-                <input
-                  type="date"
-                  name="fecha"
-                  value={formData.fecha}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-slate-700"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+                <input 
+                  type="date" 
+                  name="fecha" 
+                  value={formData.fecha} 
+                  onChange={handleChange} 
+                  required 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-900 transition-all" 
                 />
               </div>
 
-              {/* Campo: Turno */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Horario de Reserva (Máx. 2 horas)
-                </label>
-                <select
-                  name="turno"
-                  value={formData.turno}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-amber-500 focus:border-amber-500 bg-white text-slate-700"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Horario de Reserva</label>
+                <select 
+                  name="turno" 
+                  value={formData.turno} 
+                  onChange={handleChange} 
+                  required 
+                  disabled={!formData.fecha}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-900 appearance-none transition-all disabled:opacity-50"
                 >
-                  <option value="">Seleccione un horario...</option>
+                  <option value="">
+                    {!formData.fecha ? "Primero elija una fecha..." : turnosDisponibles.length > 0 ? "Seleccione un horario..." : "No hay turnos disponibles"}
+                  </option>
                   
-                  <optgroup label="Desayuno">
-                    <option value="desayuno_temprano">07:00 - 09:00</option>
-                    <option value="desayuno_tarde">09:30 - 11:30</option>
-                  </optgroup>
+                  {turnosDisponibles.some(t => t.startsWith('desayuno')) && (
+                    <optgroup label="Desayuno">
+                      {turnosDisponibles.includes('desayuno_temprano') && <option value="desayuno_temprano">07:00 - 09:00</option>}
+                      {turnosDisponibles.includes('desayuno_tarde') && <option value="desayuno_tarde">09:30 - 11:30</option>}
+                    </optgroup>
+                  )}
 
-                  <optgroup label="Comida">
-                    <option value="comida_temprano">13:00 - 15:00</option>
-                    <option value="comida_tarde">15:30 - 17:30</option>
-                  </optgroup>
+                  {turnosDisponibles.some(t => t.startsWith('comida')) && (
+                    <optgroup label="Comida">
+                      {turnosDisponibles.includes('comida_temprano') && <option value="comida_temprano">13:00 - 15:00</option>}
+                      {turnosDisponibles.includes('comida_tarde') && <option value="comida_tarde">15:30 - 17:30</option>}
+                    </optgroup>
+                  )}
 
-                  <optgroup label="Cena">
-                    <option value="cena_temprano">19:00 - 21:00</option>
-                    <option value="cena_tarde">21:30 - 23:30</option>
-                  </optgroup>
-                  
+                  {turnosDisponibles.some(t => t.startsWith('cena')) && (
+                    <optgroup label="Cena">
+                      {turnosDisponibles.includes('cena_temprano') && <option value="cena_temprano">19:00 - 21:00</option>}
+                      {turnosDisponibles.includes('cena_tarde') && <option value="cena_tarde">21:30 - 23:30</option>}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
-              {/* Campo: Cantidad de Personas */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Número de Personas</label>
-                <input
-                  type="number"
-                  name="personas"
-                  min="1"
-                  max="6"
-                  value={formData.personas}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-slate-700"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Número de Personas</label>
+                <input 
+                  type="number" 
+                  name="personas" 
+                  min="1" 
+                  max="10" 
+                  value={formData.personas} 
+                  onChange={handleChange} 
+                  required 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-900 transition-all" 
                 />
               </div>
 
-              {/* Campo: Tipo de Servicio */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Servicio</label>
-                <select
-                  name="tipoServicio"
-                  value={formData.tipoServicio}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-slate-700 bg-white"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Servicio</label>
+                <select 
+                  name="tipo_servicio" 
+                  value={formData.tipo_servicio} 
+                  onChange={handleChange} 
+                  required 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-900 transition-all"
                 >
-                  <option value="">Seleccione el servicio</option>
-                  <option value="carta">A la Carta</option>
-                  <option value="buffet">Menú Degustación / Buffet</option>
+                  <option value="">Seleccione servicio</option>
+                  <option value="A_LA_CARTA">A la Carta</option>
+                  <option value="BUFFET">Buffet</option>
                 </select>
               </div>
             </div>
 
-            {/* Mensaje de validación visual simulado */}
-            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mt-6">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-amber-700">
-                    <strong>Nota:</strong> La disponibilidad y asignación de mesas preferenciales están sujetas a su nivel de membresía (Estándar, Premium o VIP).
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Botón de Acción */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                className="w-full bg-slate-900 text-amber-500 font-bold py-3 px-4 rounded-md hover:bg-slate-800 transition duration-300 shadow-md"
+            <div className="pt-6">
+              <button 
+                type="submit" 
+                disabled={!formData.turno}
+                className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-bold py-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md shadow-amber-500/20"
               >
-                Verificar Disponibilidad y Reservar
+                CONFIRMAR RESERVACIÓN
               </button>
             </div>
-
           </form>
         </div>
       </div>

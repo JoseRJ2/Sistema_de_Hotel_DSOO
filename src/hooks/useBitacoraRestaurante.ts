@@ -1,45 +1,57 @@
 import { useState } from 'react';
 
+// Se alinea con el Diagrama de Estados
+export type EstadoReserva = 'PENDIENTE' | 'EN_USO' | 'FINALIZADA' | 'CANCELADA';
+
 export interface ReservaMesa {
   id_reserva: number;
   cliente: string;
-  membresia: string;
+  membresia: 'ESTÁNDAR' | 'PREMIUM' | 'VIP'; 
   turno_hora: string;
   tipo_turno: 'Desayuno' | 'Comida' | 'Cena'; 
   personas: number;
-  estado: 'Pendiente' | 'En Uso' | 'Finalizada' | 'Cancelada';
+  estado: EstadoReserva;
 }
 
 export const useBitacoraRestaurante = () => {
-  const [turnoSeleccionado, setTurnoSeleccionado] = useState<'Desayuno' | 'Comida' | 'Cena'>('Cena');
+  const [turnoSeleccionado, setTurnoSeleccionado] = useState<'Desayuno' | 'Comida' | 'Cena'>('Comida');
 
   const [reservas, setReservas] = useState<ReservaMesa[]>([
-    { id_reserva: 101, cliente: 'Familia García', membresia: 'VIP', turno_hora: '07:00 - 09:00', tipo_turno: 'Desayuno', personas: 4, estado: 'Pendiente' },
-    { id_reserva: 102, cliente: 'Sr. López', membresia: 'Premium', turno_hora: '13:00 - 15:00', tipo_turno: 'Comida', personas: 2, estado: 'En Uso' },
-    { id_reserva: 103, cliente: 'Ana Martínez', membresia: 'Estándar', turno_hora: '19:00 - 21:00', tipo_turno: 'Cena', personas: 6, estado: 'Pendiente' },
-    { id_reserva: 104, cliente: 'Familia Ruiz', membresia: 'Premium', turno_hora: '21:30 - 23:30', tipo_turno: 'Cena', personas: 3, estado: 'Pendiente' },
+    { id_reserva: 101, cliente: 'Familia García', membresia: 'VIP', turno_hora: '07:00 - 09:00', tipo_turno: 'Desayuno', personas: 4, estado: 'PENDIENTE' },
+    { id_reserva: 102, cliente: 'Sr. López', membresia: 'PREMIUM', turno_hora: '13:00 - 15:00', tipo_turno: 'Comida', personas: 2, estado: 'EN_USO' },
+    { id_reserva: 103, cliente: 'Ana Martínez', membresia: 'ESTÁNDAR', turno_hora: '13:00 - 15:00', tipo_turno: 'Comida', personas: 6, estado: 'PENDIENTE' },
   ]);
 
   const reservasFiltradas = reservas.filter((res) => res.tipo_turno === turnoSeleccionado);
 
-  const cambiarEstado = (id: number, nuevoEstado: ReservaMesa['estado']) => {
+  // Método del Diagrama de Clases: Reserva.cambiarEstado()
+  const cambiarEstado = (id: number, nuevoEstado: EstadoReserva) => {
     setReservas((prev) =>
-      prev.map((res) => (res.id_reserva === id ? { ...res, estado: nuevoEstado } : res))
+      prev.map((r) => (r.id_reserva === id ? { ...r, estado: nuevoEstado } : r))
     );
   };
 
+  // Método del Diagrama de Secuencia: ServicioRestaurante.asignarMesa()
+  const asignarMesa = (id: number) => {
+    console.log(`Mesa asignada físicamente en el restaurante para la reserva ${id}`);
+    cambiarEstado(id, 'EN_USO');
+  };
+
+  // Flujo alternativo del Caso de Uso
   const cancelarReserva = (id: number) => {
-    const confirmar = window.confirm('¿Confirmar que el cliente no se presentó o canceló? La mesa será liberada.');
-    if (confirmar) {
-      cambiarEstado(id, 'Cancelada');
-    }
+    cambiarEstado(id, 'CANCELADA');
+  };
+
+  const finalizarReserva = (id: number) => {
+    cambiarEstado(id, 'FINALIZADA');
   };
 
   return {
     turnoSeleccionado,
     setTurnoSeleccionado,
     reservasFiltradas,
-    cambiarEstado,
+    asignarMesa,
     cancelarReserva,
+    finalizarReserva
   };
 };

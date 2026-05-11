@@ -69,7 +69,18 @@ export const useGestionUsuarios = () => {
     } catch { mostrarMensaje('error', 'Error de conexión'); }
   };
 
+  const eliminarUsuario = async (id_usuario: number) => {
+    if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) return;
+    try {
+      const res = await fetch(`/api/usuarios/${id_usuario}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'ELIMINAR' }) });
+      const data = await res.json();
+      if (!res.ok) { mostrarMensaje('error', data.error); return; }
+      mostrarMensaje('exito', '✓ Usuario eliminado permanentemente.');
+      await cargarDatos();
+    } catch { mostrarMensaje('error', 'Error de conexión'); }
+  };
+
   const getNombreRol = (id_rol: number) => roles.find(r => r.id_rol === id_rol)?.nombre ?? '—';
 
-  return { usuarios, roles, auditoria, vistaActiva, setVistaActiva, mensaje, formCrear, handleChangeCrear, handleSubmitCrear, modificarRol, desactivarUsuario, getNombreRol };
+  return { usuarios, roles, auditoria, vistaActiva, setVistaActiva, mensaje, formCrear, handleChangeCrear, handleSubmitCrear, modificarRol, desactivarUsuario, eliminarUsuario, getNombreRol };
 };
