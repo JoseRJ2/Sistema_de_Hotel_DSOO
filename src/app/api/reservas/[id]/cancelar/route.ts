@@ -9,22 +9,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const reserva = await withPrismaRetry(prisma =>
       prisma.reserva.findUnique({
         where: { id_reserva: id },
-        include: { Cliente: { include: { Usuario: { include: { Rol: true } } } } },
+        include: { Pago: true, Cliente: { include: { Usuario: { include: { Rol: true } } } } },
       })
     );
     if (!reserva) return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 });
 
     const tipoCliente = reserva.Cliente?.Usuario?.Rol?.nombre?.toUpperCase() ?? 'ESTANDAR';
-    const horasRestantes = (new Date(reserva.fecha_check_in).getTime() - Date.now()) / 3600000;
+    const horasRestantes = (new Date(reserva.fecha_checkin).getTime() - Date.now()) / 3600000;
+    
+    const costoTotal = reserva.Pago?.[0]?.monto ? Number(reserva.Pago[0].monto) : 0;
 
     let penalizacion = 0;
-    if (tipoCliente.includes('ESTANDAR') && horasRestantes < 48) penalizacion = Number(reserva.costo_total) * 0.5;
-    if (tipoCliente.includes('PREMIUM') && horasRestantes < 24) penalizacion = Number(reserva.costo_total) * 0.3;
+    if (tipoCliente.includes('ESTANDAR') && horasRestantes < 48) penalizacion = costoTotal * 0.5;
+    if (tipoCliente.includes('PREMIUM') && horasRestantes < 24) penalizacion = costoTotal * 0.3;
 
     const actualizada = await withPrismaRetry(prisma =>
       prisma.reserva.update({
         where: { id_reserva: id },
-        data: { estado: 'CANCELADA', fecha_cancelacion: new Date(), monto_penalizacion: penalizacion },
+        data: { estado: 'CANCELADA' },
       })
     );
 
@@ -42,7 +44,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
 
     return NextResponse.json(actualizada);
-  } catch {
+  } catch(error) {
+    console.error("Error al cancelar reserva:", error);
     return NextResponse.json({ error: 'Error al cancelar reserva' }, { status: 500 });
   }
 }

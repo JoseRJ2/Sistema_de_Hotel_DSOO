@@ -18,10 +18,11 @@ export const useReservasAlojamiento = () => {
   const [alojamientos, setAlojamientos] = useState<Alojamiento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [reglasUpgrade, setReglasUpgrade] = useState<ReglaUpgrade[]>([]);
-  const [vistaActiva, setVistaActiva] = useState<'lista' | 'crear' | 'detalle'>('lista');
+  const [vistaActiva, setVistaActiva] = useState<'lista' | 'crear' | 'detalle' | 'editar'>('lista');
   const [reservaSeleccionada, setReservaSeleccionada] = useState<ReservaAlojamiento | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
   const [formCrear, setFormCrear] = useState({ id_cliente: '', id_alojamiento: '', fecha_check_in: '', fecha_check_out: '', tipo_pago: '' });
+  const [formEditar, setFormEditar] = useState({ id_alojamiento: '', fecha_check_in: '', fecha_check_out: '', tipo_pago: '' });
 
   const mostrarMensaje = (tipo: 'exito' | 'error', texto: string) => { setMensaje({ tipo, texto }); setTimeout(() => setMensaje(null), 3500); };
 
@@ -54,6 +55,18 @@ export const useReservasAlojamiento = () => {
   useEffect(() => { cargarDatos(); }, []);
 
   const handleChangeCrear = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { const { name, value } = e.target; setFormCrear(prev => ({ ...prev, [name]: value })); };
+  const handleChangeEditar = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { const { name, value } = e.target; setFormEditar(prev => ({ ...prev, [name]: value })); };
+
+  const abrirEditar = (r: ReservaAlojamiento) => {
+    setReservaSeleccionada(r);
+    setFormEditar({
+      id_alojamiento: String(r.id_alojamiento),
+      fecha_check_in: r.fecha_check_in,
+      fecha_check_out: r.fecha_check_out,
+      tipo_pago: r.pago?.tipo_pago ?? '',
+    });
+    setVistaActiva('editar');
+  };
 
   const preview = useMemo(() => {
     if (!formCrear.id_cliente || !formCrear.id_alojamiento || !formCrear.fecha_check_in || !formCrear.fecha_check_out) return null;
@@ -92,6 +105,24 @@ export const useReservasAlojamiento = () => {
     } catch { mostrarMensaje('error', 'Error de conexión'); }
   };
 
+  const modificarReserva = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!reservaSeleccionada) return;
+    try {
+      const res = await fetch(`/api/reservas/${reservaSeleccionada.id_reserva}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formEditar),
+      });
+      const data = await res.json();
+      if (!res.ok) { mostrarMensaje('error', data.error); return; }
+      mostrarMensaje('exito', `✓ Reserva ${reservaSeleccionada.codigo_confirmacion} modificada.`);
+      setVistaActiva('lista');
+      setReservaSeleccionada(null);
+      await cargarDatos();
+    } catch { mostrarMensaje('error', 'Error de conexión'); }
+  };
+
   const alojamientosDisponibles = (tipo: TipoCliente | null) => alojamientos.filter(a => {
     if (a.estado !== 'DISPONIBLE') return false;
     if (a.tipo === 'VILLA_PREMIUM' && tipo === 'ESTANDAR') return false;
@@ -104,5 +135,5 @@ export const useReservasAlojamiento = () => {
   const getNumeroUnidad = (id: number) => alojamientos.find(a => a.id_alojamiento === id)?.numero_unidad ?? '—';
   const getTipoAlojamiento = (id: number) => alojamientos.find(a => a.id_alojamiento === id)?.tipo ?? '—';
 
-  return { reservas, alojamientos, clientes, reglasUpgrade, vistaActiva, setVistaActiva, reservaSeleccionada, setReservaSeleccionada, mensaje, formCrear, preview, handleChangeCrear, handleSubmitCrear, cancelarReserva, getNombreCliente, getTipoCliente, getNumeroUnidad, getTipoAlojamiento, alojamientosDisponibles, clienteSeleccionado };
+  return { reservas, alojamientos, clientes, reglasUpgrade, vistaActiva, setVistaActiva, reservaSeleccionada, setReservaSeleccionada, mensaje, formCrear, preview, handleChangeCrear, handleSubmitCrear, cancelarReserva, modificarReserva, abrirEditar, formEditar, handleChangeEditar, getNombreCliente, getTipoCliente, getNumeroUnidad, getTipoAlojamiento, alojamientosDisponibles, clienteSeleccionado };
 };

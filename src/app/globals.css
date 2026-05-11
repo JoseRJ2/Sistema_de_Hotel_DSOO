@@ -14,13 +14,7 @@
 :root {
   --background: var(--color-luxury-ivory);
   --foreground: var(--color-luxury-black);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--color-luxury-black);
-    --foreground: var(--color-luxury-ivory);
-  }
+  color-scheme: light;
 }
 
 body {
