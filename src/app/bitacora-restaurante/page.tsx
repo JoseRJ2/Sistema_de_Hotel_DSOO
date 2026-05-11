@@ -1,76 +1,194 @@
 'use client';
 
-import { useBitacoraRestaurante } from '../../hooks/useBitacoraRestaurante';
+import { useState, useEffect, useRef } from 'react';
+import { useBitacoraRestaurante } from '@/hooks/useBitacoraRestaurante';
+import { useAuth } from '@/context/AuthContext';
+import { Search, Utensils, UserPlus, CheckCircle, XCircle, LogIn, Star, Loader2, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function BitacoraRestaurantePage() {
-  const { turnoSeleccionado, setTurnoSeleccionado, reservasFiltradas, asignarMesa, cancelarReserva, finalizarReserva } = useBitacoraRestaurante();
+  const { esEmpleado } = useAuth(); // Actor: pepe (Empleado)
+  const { registros: registrosServidor, cargando, consultarBitacora, cambiarEstadoReserva } = useBitacoraRestaurante();
+  
+  // Nomenclatura del diagrama: "lista" de registros
+  const [lista, setLista] = useState<any[]>([]); 
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
+  const [filtroTurno, setFiltroTurno] = useState('TODOS');
+  const [busquedaNombre, setBusquedaNombre] = useState('');
+
+  // Semáforo para control de flujo de datos
+  const bloqueadoPorAccion = useRef(false);
+
+  /**
+   * Mensaje: solicitarRangoFechas(fechaInicio, fechaFin)
+   */
+  const solicitarRangoFechas = (fecha: string) => {
+    bloqueadoPorAccion.current = false;
+    setFechaSeleccionada(fecha);
+    consultarBitacora(fecha, fecha);
+  };
+
+  useEffect(() => {
+    solicitarRangoFechas(fechaSeleccionada);
+  }, [fechaSeleccionada]);
+
+  useEffect(() => {
+    if (registrosServidor && !bloqueadoPorAccion.current) {
+      setLista(registrosServidor);
+    }
+  }, [registrosServidor]);
+
+  /**
+   * Mensaje: procesarTransicionEstado(id, nuevoEstado)
+   * Implementa actualización optimista y persistencia
+   */
+  const procesarTransicionEstado = async (id: number, nuevoEstado: string) => {
+    bloqueadoPorAccion.current = true;
+
+    // Actualización de UI inmediata (Optimista)
+    if (nuevoEstado === 'FINALIZADA' || nuevoEstado === 'CANCELADA') {
+      setLista(prev => prev.filter(r => Number(r.id_servicio) !== Number(id)));
+    } else {
+      setLista(prev => prev.map(r => 
+        Number(r.id_servicio) === Number(id) ? { ...r, estado: nuevoEstado } : r
+      ));
+    }
+
+    try {
+      await cambiarEstadoReserva(id, nuevoEstado);
+      setTimeout(() => { bloqueadoPorAccion.current = false; }, 1000);
+    } catch (error) {
+      alert("Error al guardar en BD");
+      bloqueadoPorAccion.current = false;
+      solicitarRangoFechas(fechaSeleccionada);
+    }
+  };
+
+  if (!esEmpleado) return <div className="p-10 text-center text-red-500 font-bold">Acceso Denegado.</div>;
+
+  const registrosFiltrados = lista.filter(reg => {
+    const cumpleTurno = filtroTurno === 'TODOS' || reg.turno === filtroTurno;
+    const cumpleNombre = (reg.nombre_huesped || "").toLowerCase().includes(busquedaNombre.toLowerCase());
+    return cumpleTurno && cumpleNombre;
+  });
 
   return (
-    <main className="min-h-screen bg-slate-100 py-10 px-4 font-sans">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        
-        <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-serif font-bold text-amber-500">Bitácora de Restaurante (Host)</h2>
+    <main className="p-6 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900">Bitácora de Restaurante</h1>
+            <p className="text-slate-500">Gestión de estados según flujo de auditoría.</p>
+          </div>
+          <Link href="/restaurante" className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+            <UserPlus size={20} /> Nueva Reserva
+          </Link>
         </div>
 
-        <div className="p-6">
-          <div className="flex gap-4 mb-6">
-            {['Desayuno', 'Comida', 'Cena'].map((turno) => (
-              <button
-                key={turno}
-                onClick={() => setTurnoSeleccionado(turno as any)}
-                className={`px-4 py-2 rounded-md font-bold ${turnoSeleccionado === turno ? 'bg-amber-500 text-slate-900' : 'bg-slate-200 text-slate-600'}`}
-              >
-                {turno}
-              </button>
-            ))}
+        {/* Filtros e invocación de solicitarRangoFechas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Fecha de Consulta</label>
+            <input type="date" value={fechaSeleccionada} onChange={(e) => solicitarRangoFechas(e.target.value)} className="w-full outline-none text-slate-700 bg-transparent font-medium" />
           </div>
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Filtrar por Turno</label>
+            <select value={filtroTurno} onChange={(e) => setFiltroTurno(e.target.value)} className="w-full outline-none text-slate-700 bg-transparent font-medium">
+              <option value="TODOS">Todos los Turnos</option>
+              <option value="DESAYUNO">Desayunos</option>
+              <option value="COMIDA">Comidas</option>
+              <option value="CENA">Cenas</option>
+            </select>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <Search className="text-slate-400" size={18} />
+            <input type="text" placeholder="Buscar por nombre..." value={busquedaNombre} onChange={(e) => setBusquedaNombre(e.target.value)} className="w-full outline-none text-slate-700 bg-transparent" />
+          </div>
+        </div>
 
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-slate-100 text-left text-slate-600 uppercase text-sm">
-                <th className="p-3 border-b">ID</th>
-                <th className="p-3 border-b">Cliente</th>
-                <th className="p-3 border-b">Horario</th>
-                <th className="p-3 border-b">Personas</th>
-                <th className="p-3 border-b">Estado</th>
-                <th className="p-3 border-b">Acciones</th>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+          {cargando && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+              <Loader2 className="animate-spin text-indigo-600" size={32} />
+            </div>
+          )}
+          
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Reserva</th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Cliente / Nivel</th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Horario</th>
+                <th className="p-4 text-center text-xs font-bold text-slate-500 uppercase">Pax</th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Estado Actual</th>
+                <th className="p-4 text-center text-xs font-bold text-slate-500 uppercase">Acciones Rápidas</th>
               </tr>
             </thead>
-            <tbody>
-              {reservasFiltradas.length > 0 ? (
-                reservasFiltradas.map((res) => (
-                  <tr key={res.id_reserva} className="hover:bg-slate-50 border-b">
-                    <td className="p-3 font-bold text-slate-700">#{res.id_reserva}</td>
-                    <td className="p-3">
-                      {res.cliente} <span className={`text-xs px-2 py-1 rounded ml-2 ${res.membresia === 'VIP' ? 'bg-purple-200 text-purple-800' : res.membresia === 'PREMIUM' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-800'}`}>{res.membresia}</span>
-                    </td>
-                    <td className="p-3 text-slate-600">{res.turno_hora}</td>
-                    <td className="p-3 text-slate-600">{res.personas} pax</td>
-                    <td className="p-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${res.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' : res.estado === 'EN_USO' ? 'bg-green-100 text-green-800' : res.estado === 'FINALIZADA' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
-                        {res.estado.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="p-3 flex gap-2">
-                      {/* Lógica dictada por el Diagrama de Estados */}
+            <tbody className="divide-y divide-slate-100">
+              {registrosFiltrados.map((res) => (
+                <tr key={res.id_servicio} className={`transition-all duration-200 hover:bg-slate-50/80 ${res.tipo_cliente !== 'ESTANDAR' ? 'bg-amber-50/20' : ''}`}>
+                  <td className="p-4 text-sm font-mono text-slate-400">#{res.id_servicio}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800">{res.nombre_huesped}</span>
+                      {res.tipo_cliente !== 'ESTANDAR' && (
+                        <span className="bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
+                          <Star size={10} fill="currentColor" /> {res.tipo_cliente}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm text-slate-600 font-medium capitalize">
+                    {(res.hora_bloque || '').replace('_', ' ')}
+                  </td>
+                  <td className="p-4 text-center font-bold text-slate-700">{res.cantidad_personas}</td>
+                  <td className="p-4">
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                      res.estado === 'PENDIENTE' ? 'bg-blue-100 text-blue-700' :
+                      res.estado === 'EN_USO' ? 'bg-indigo-100 text-indigo-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {res.estado}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-center gap-2">
                       {res.estado === 'PENDIENTE' && (
-                        <>
-                          <button onClick={() => asignarMesa(res.id_reserva)} className="bg-green-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-green-700">Dar Mesa</button>
-                          <button onClick={() => cancelarReserva(res.id_reserva)} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold hover:bg-red-600">Cancelar</button>
-                        </>
+                        <button 
+                          onClick={() => procesarTransicionEstado(res.id_servicio, 'EN_USO')} 
+                          className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-sm active:scale-95 transition-all"
+                        >
+                          <LogIn size={14} /> Dar Mesa
+                        </button>
                       )}
                       {res.estado === 'EN_USO' && (
-                        <button onClick={() => finalizarReserva(res.id_reserva)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm font-bold hover:bg-blue-600">Finalizar (Check-out)</button>
+                        <button 
+                          onClick={() => procesarTransicionEstado(res.id_servicio, 'FINALIZADA')} 
+                          className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm active:scale-95 transition-all"
+                        >
+                          <CheckCircle size={14} /> Finalizar
+                        </button>
                       )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan={6} className="p-8 text-center text-slate-400">No hay reservas.</td></tr>
-              )}
+                      <button 
+                        onClick={() => procesarTransicionEstado(res.id_servicio, 'CANCELADA')} 
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Cancelar Reserva"
+                      >
+                        <XCircle size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
+          
+          {registrosFiltrados.length === 0 && !cargando && (
+            <div className="p-20 text-center text-slate-400">
+              <AlertCircle className="mx-auto mb-4 opacity-10" size={64} />
+              <p className="font-medium">No hay registros para mostrar en este reporte.</p>
+            </div>
+          )}
         </div>
       </div>
     </main>
