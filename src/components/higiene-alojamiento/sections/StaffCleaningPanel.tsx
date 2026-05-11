@@ -8,29 +8,31 @@ import type { PendingCleaningUnit } from "@/types/higiene-alojamiento/higiene-al
 
 interface StaffCleaningPanelProps {
   units: PendingCleaningUnit[];
+  onStartCleaning: () => Promise<void>;
+  onRegisterSupplies: (values: SuppliesConsumptionFormValues) => Promise<void>;
+  onFinishCleaning: () => Promise<void>;
 }
 
 export default function StaffCleaningPanel({
   units,
+  onStartCleaning,
+  onRegisterSupplies,
+  onFinishCleaning,
 }: StaffCleaningPanelProps) {
-  const handleSuppliesSubmit = (values: SuppliesConsumptionFormValues) => {
-    try {
-      console.log("Insumos registrados:", values);
-    } catch (error) {
-      console.error("Error al registrar insumos:", error);
-    }
-  };
-
   return (
     <section className="space-y-6">
       <SectionHeader
         title="Panel del personal"
-        subtitle="Consulta unidades pendientes y prioridades operativas."
+        subtitle="Consulta unidades pendientes y ejecuta el ciclo operativo de limpieza."
       />
 
-      <PendingUnitsCard units={units} />
+      <PendingUnitsCard
+        units={units}
+        onStartCleaning={onStartCleaning}
+        onFinishCleaning={onFinishCleaning}
+      />
 
-      <SuppliesConsumptionCard onSubmit={handleSuppliesSubmit} />
+      <SuppliesConsumptionCard onSubmit={onRegisterSupplies} />
     </section>
   );
 }

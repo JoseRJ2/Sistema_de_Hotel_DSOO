@@ -1,3 +1,8 @@
+-- ==============================================================================
+-- SISTEMA DE GESTIÓN HOTELERA
+-- Script INIT final
+-- MySQL 8+
+-- ==============================================================================
 CREATE DATABASE IF NOT EXISTS hotel_dsoo
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -225,15 +230,20 @@ CREATE TABLE AreaAmenidad (
     sello_higiene_visible  BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- ------------------------------------------------------------------------------
+-- ACTUALIZACIÓN: SERVICIO DE RESTAURANTE (Sin dependencia de AreaAmenidad)
+-- ------------------------------------------------------------------------------
+
 CREATE TABLE ServicioRestaurante (
-    id_servicio      INT AUTO_INCREMENT PRIMARY KEY,
-    id_area          INT NOT NULL,
-    turno            ENUM('DESAYUNO', 'COMIDA', 'CENA') NOT NULL,
-    tipo_servicio    ENUM('BUFFET', 'A_LA_CARTA') NOT NULL,
-    CONSTRAINT fk_servicio_restaurante_area
-        FOREIGN KEY (id_area) REFERENCES AreaAmenidad(id_area)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+    id_servicio       INT AUTO_INCREMENT PRIMARY KEY,
+    id_cliente        INT NOT NULL,
+    fecha             DATE NOT NULL,
+    turno             ENUM('DESAYUNO', 'COMIDA', 'CENA') NOT NULL,
+    hora_bloque       VARCHAR(50) NOT NULL,
+    cantidad_personas INT NOT NULL,
+    tipo_servicio     ENUM('BUFFET', 'A_LA_CARTA') NOT NULL,
+    estado            ENUM('PENDIENTE', 'EN_USO', 'FINALIZADA', 'CANCELADA') NOT NULL DEFAULT 'PENDIENTE',
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE
 );
 
 -- ==============================================================================
@@ -569,7 +579,6 @@ SELECT
     'CANCELACION_VIP'
 FROM Rol r
 WHERE r.nombre = 'CLIENTE_VIP';
-=======
 -- Base de Datos sincronizada con Diagrama de Clases (XML/Draw.io)
 -- Creación inicial
 -- ==============================================================================
@@ -726,11 +735,18 @@ CREATE TABLE AreaAmenidad (
     capacidad_maxima INT NOT NULL
 );
 
+-- ------------------------------------------------------------------------------
+-- ACTUALIZACIÓN: SERVICIO DE RESTAURANTE (Sin dependencia de AreaAmenidad)
+-- ------------------------------------------------------------------------------
+
 CREATE TABLE ServicioRestaurante (
-    id_servicio   INT AUTO_INCREMENT PRIMARY KEY,
-    id_area       INT NOT NULL,
-    turno         ENUM('DESAYUNO', 'COMIDA', 'CENA') NOT NULL,
-    tipo_servicio ENUM('BUFFET', 'A_LA_CARTA') NOT NULL,
-    FOREIGN KEY (id_area) REFERENCES AreaAmenidad(id_area) ON DELETE CASCADE
+    id_servicio       INT AUTO_INCREMENT PRIMARY KEY,
+    id_cliente        INT NOT NULL,
+    fecha             DATE NOT NULL,
+    turno             ENUM('DESAYUNO', 'COMIDA', 'CENA') NOT NULL,
+    hora_bloque       VARCHAR(50) NOT NULL,
+    cantidad_personas INT NOT NULL,
+    tipo_servicio     ENUM('BUFFET', 'A_LA_CARTA') NOT NULL,
+    estado            ENUM('PENDIENTE', 'EN_USO', 'FINALIZADA', 'CANCELADA') NOT NULL DEFAULT 'PENDIENTE',
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE
 );
->>>>>>> main

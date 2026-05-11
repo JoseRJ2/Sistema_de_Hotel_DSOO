@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import ClientCleaningPanel from "@/components/higiene-alojamiento/sections/ClientCleaningPanel";
 import CleaningTimelineSection from "@/components/higiene-alojamiento/sections/CleaningTimelineSection";
 import StaffCleaningPanel from "@/components/higiene-alojamiento/sections/StaffCleaningPanel";
+import type { SuppliesConsumptionFormValues } from "@/components/higiene-alojamiento/forms/SuppliesConsumptionForm";
 import { higieneAlojamientoMock } from "@/lib/mock-data/higiene-alojamiento.mock";
 import type {
   CleaningTimelineItem,
@@ -14,6 +15,8 @@ import type {
 } from "@/types/higiene-alojamiento/higiene-alojamiento.types";
 
 const RESERVA_ID = 1;
+const PERSONAL_LIMPIEZA_ID = 4;
+const USUARIO_CLIENTE_ID = 1;
 
 function buildTimeline(status: EstadoHigiene): CleaningTimelineItem[] {
   const order: Array<{
@@ -128,17 +131,50 @@ export default function HigieneAlojamientoPage() {
   const [staySummary, setStaySummary] = useState<StaySummary>(
     higieneAlojamientoMock.staySummary
   );
+
   const [timeline, setTimeline] = useState<CleaningTimelineItem[]>(
     higieneAlojamientoMock.timeline
   );
-  const [pendingUnits] = useState<PendingCleaningUnit[]>(
+
+  const [pendingUnits, setPendingUnits] = useState<PendingCleaningUnit[]>(
     higieneAlojamientoMock.pendingUnits
   );
+
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     higieneAlojamientoMock.notifications
   );
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [requestError, setRequestError] = useState<string | null>(null);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/higiene-alojamiento/notificaciones/${USUARIO_CLIENTE_ID}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("No fue posible obtener las notificaciones.");
+      }
+
+      const data = await response.json();
+
+      setNotifications(
+        data.map((notification: NotificationItem) => ({
+          id: notification.id,
+          title: notification.title,
+          description: notification.description,
+          timestamp: notification.timestamp,
+        }))
+      );
+    } catch (error) {
+      console.error("Error al cargar notificaciones:", error);
+    }
+  }, []);
 
   const addNotification = useCallback((title: string, description: string) => {
     try {
@@ -152,6 +188,34 @@ export default function HigieneAlojamientoPage() {
       setNotifications((prev) => [newNotification, ...prev]);
     } catch (error) {
       console.error("Error al agregar notificación:", error);
+    }
+  }, []);
+
+  const loadPendingUnits = useCallback(async () => {
+    try {
+      const response = await fetch("/api/higiene-alojamiento/unidades-pendientes", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("No fue posible obtener las unidades pendientes.");
+      }
+
+      const data = await response.json();
+
+      setPendingUnits(
+        data.map((unit: PendingCleaningUnit) => ({
+          id: unit.id,
+          nombre: unit.nombre,
+          tipoAlojamiento: unit.tipoAlojamiento,
+          estado: unit.estado,
+          prioridad: unit.prioridad,
+          horarioSugerido: unit.horarioSugerido,
+        }))
+      );
+    } catch (error) {
+      console.error("Error al cargar unidades pendientes:", error);
     }
   }, []);
 
@@ -189,8 +253,8 @@ export default function HigieneAlojamientoPage() {
         tipoCliente: data.rolCliente.includes("VIP")
           ? "VIP"
           : data.rolCliente.includes("PREMIUM")
-          ? "PREMIUM"
-          : "ESTANDAR",
+            ? "PREMIUM"
+            : "ESTANDAR",
         estado: mappedStatus,
         privacidadActiva: data.privacidadActiva,
         prioridad: data.tipoAlojamiento.includes("VILLA"),
@@ -211,7 +275,9 @@ export default function HigieneAlojamientoPage() {
 
   useEffect(() => {
     void loadResumen();
-  }, [loadResumen]);
+    void loadPendingUnits();
+    void loadNotifications();
+  }, [loadResumen, loadPendingUnits, loadNotifications]);
 
   const handleActivateNoMolestar = async () => {
     try {
@@ -236,6 +302,8 @@ export default function HigieneAlojamientoPage() {
       );
 
       await loadResumen();
+      await loadPendingUnits();
+      await loadNotifications();
     } catch (error) {
       console.error("Error al activar No Molestar:", error);
       throw error;
@@ -310,6 +378,121 @@ export default function HigieneAlojamientoPage() {
     }
   };
 
+  const handleStartCleaning = async () => {
+    try {
+      const response = await fetch("/api/higiene-alojamiento/iniciar-limpieza", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reservaId: RESERVA_ID,
+          usuarioPersonalId: PERSONAL_LIMPIEZA_ID,
+          observaciones: "Inicio de limpieza desde panel del personal.",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("No fue posible iniciar la limpieza.");
+      }
+
+      addNotification(
+        "Limpieza en proceso",
+        "El personal inició la atención del alojamiento."
+      );
+
+      await loadResumen();
+    } catch (error) {
+      console.error("Error al iniciar limpieza:", error);
+      throw error;
+    }
+  };
+
+  const handleRegisterSupplies = async (
+    values: SuppliesConsumptionFormValues
+  ) => {
+    try {
+      const insumos = [
+        {
+          insumoId: 1,
+          cantidad: values.toallas,
+          observaciones: "Toallas repuestas",
+        },
+        {
+          insumoId: 2,
+          cantidad: values.jabones,
+          observaciones: "Jabones repuestos",
+        },
+        {
+          insumoId: 3,
+          cantidad: values.shampoo,
+          observaciones: "Shampoo repuesto",
+        },
+        {
+          insumoId: 4,
+          cantidad: values.agua,
+          observaciones: "Agua embotellada repuesta",
+        },
+      ].filter((item) => item.cantidad > 0);
+
+      const response = await fetch("/api/higiene-alojamiento/registrar-insumos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reservaId: RESERVA_ID,
+          insumos,
+          observaciones: values.observaciones,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("No fue posible registrar los insumos.");
+      }
+
+      addNotification(
+        "Insumos registrados",
+        "Se registró la reposición de suministros del alojamiento."
+      );
+
+      await loadResumen();
+    } catch (error) {
+      console.error("Error al registrar insumos:", error);
+      throw error;
+    }
+  };
+
+  const handleFinishCleaning = async () => {
+    try {
+      const response = await fetch("/api/higiene-alojamiento/finalizar-limpieza", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reservaId: RESERVA_ID,
+          usuarioPersonalId: PERSONAL_LIMPIEZA_ID,
+          observaciones: "Limpieza finalizada desde panel del personal.",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("No fue posible finalizar la limpieza.");
+      }
+
+      addNotification(
+        "Limpieza finalizada",
+        "La unidad quedó marcada como limpia nuevamente."
+      );
+
+      await loadResumen();
+    } catch (error) {
+      console.error("Error al finalizar limpieza:", error);
+      throw error;
+    }
+  };
+
   return (
     <main className="min-h-screen bg-luxury-ivory px-6 py-10 md:px-10">
       <div className="mx-auto max-w-7xl space-y-10">
@@ -352,7 +535,12 @@ export default function HigieneAlojamientoPage() {
           <CleaningTimelineSection items={timeline} />
         </div>
 
-        <StaffCleaningPanel units={pendingUnits} />
+        <StaffCleaningPanel
+          units={pendingUnits}
+          onStartCleaning={handleStartCleaning}
+          onRegisterSupplies={handleRegisterSupplies}
+          onFinishCleaning={handleFinishCleaning}
+        />
       </div>
     </main>
   );

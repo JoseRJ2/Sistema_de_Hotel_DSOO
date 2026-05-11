@@ -1,17 +1,26 @@
+"use client";
+
 import PriorityBadge from "@/components/higiene-alojamiento/shared/PriorityBadge";
 import StatusBadge from "@/components/higiene-alojamiento/shared/StatusBadge";
 import type { PendingCleaningUnit } from "@/types/higiene-alojamiento/higiene-alojamiento.types";
 
 interface PendingUnitsCardProps {
   units: PendingCleaningUnit[];
+  onStartCleaning?: () => Promise<void>;
+  onFinishCleaning?: () => Promise<void>;
 }
 
-export default function PendingUnitsCard({ units }: PendingUnitsCardProps) {
+export default function PendingUnitsCard({
+  units,
+  onStartCleaning,
+  onFinishCleaning,
+}: PendingUnitsCardProps) {
   return (
     <article className="rounded-3xl border border-luxury-gold/25 bg-white p-6 shadow-sm">
       <h3 className="font-serif text-2xl text-luxury-black">
         Unidades pendientes
       </h3>
+
       <p className="mt-2 text-sm text-luxury-charcoal/80">
         Vista para personal de limpieza, priorizando villas premium.
       </p>
@@ -44,6 +53,24 @@ export default function PendingUnitsCard({ units }: PendingUnitsCardProps) {
                 </span>
               </p>
             ) : null}
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onStartCleaning}
+                className="rounded-xl bg-luxury-black px-4 py-2 text-sm font-semibold text-luxury-ivory transition hover:opacity-90"
+              >
+                Iniciar limpieza
+              </button>
+
+              <button
+                type="button"
+                onClick={onFinishCleaning}
+                className="rounded-xl border border-luxury-gold/40 bg-white px-4 py-2 text-sm font-semibold text-luxury-black transition hover:bg-luxury-champagne/40"
+              >
+                Finalizar limpieza
+              </button>
+            </div>
           </div>
         ))}
       </div>

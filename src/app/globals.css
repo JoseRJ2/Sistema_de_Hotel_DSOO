@@ -14,13 +14,7 @@
 :root {
   --background: var(--color-luxury-ivory);
   --foreground: var(--color-luxury-black);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--color-luxury-black);
-    --foreground: var(--color-luxury-ivory);
-  }
+  color-scheme: light;
 }
 
 body {
@@ -30,4 +24,13 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+select, input, label, option {
+  color: #0A0A0A !important;
+}
+
+select option {
+  color: #0A0A0A !important;
+  background: #FFFFFF !important;
 }

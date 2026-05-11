@@ -33,7 +33,6 @@ model AreaAmenidad {
   ProgramacionHigieneArea ProgramacionHigieneArea[]
   RegistroLimpieza        RegistroLimpieza[]
   ReservaAmenidad         ReservaAmenidad[]
-  ServicioRestaurante     ServicioRestaurante[]
 }
 
 model Beneficio {
@@ -73,6 +72,7 @@ model Cliente {
   Membresia                Membresia[]
   Reserva                  Reserva[]
   ReservaAmenidad          ReservaAmenidad[]
+  ServicioRestaurante      ServicioRestaurante[]
 
   @@index([id_usuario], map: "idx_cliente_usuario")
 }
@@ -271,13 +271,24 @@ model Rol_Permiso {
 }
 
 model ServicioRestaurante {
-  id_servicio   Int                               @id @default(autoincrement())
-  id_area       Int
-  turno         ServicioRestaurante_turno
-  tipo_servicio ServicioRestaurante_tipo_servicio
-  AreaAmenidad  AreaAmenidad                      @relation(fields: [id_area], references: [id_area], onDelete: Cascade, map: "fk_servicio_restaurante_area")
+  id_servicio       Int                            @id @default(autoincrement())
+  id_cliente        Int                            // Nuevo: Quién reserva
+  fecha             DateTime                       @db.Date // Nuevo: Cuándo
+  turno             ServicioRestaurante_turno
+  hora_bloque       String                         @db.VarChar(50) // Nuevo: Bloque de 2h
+  cantidad_personas Int                            // Nuevo: Cuántos
+  tipo_servicio     ServicioRestaurante_tipo_servicio
+  estado            ServicioRestaurante_estado     @default(PENDIENTE) // Nuevo: Estado para la bitácora
 
-  @@index([id_area], map: "fk_servicio_restaurante_area")
+  Cliente           Cliente                        @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+}
+
+// No olvides agregar el Enum de estado si no lo tienes
+enum ServicioRestaurante_estado {
+  PENDIENTE
+  EN_USO
+  FINALIZADA
+  CANCELADA
 }
 
 model SolicitudServicioAlojamiento {
