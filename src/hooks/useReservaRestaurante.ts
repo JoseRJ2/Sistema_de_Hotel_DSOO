@@ -85,7 +85,7 @@ export const useReservaRestaurante = () => {
         return;
       }
 
-      setMensaje({ texto: `¡Reserva confirmada! ID: ${data.res.id_servicio_restaurante}`, tipo: 'exito' });
+      setMensaje({ texto: `Se ha reservado exitosamente`, tipo: 'exito' });
       setFormData({ fecha: '', turno: '', personas: 1, tipo_servicio: '' });
 
     } catch (error) {
