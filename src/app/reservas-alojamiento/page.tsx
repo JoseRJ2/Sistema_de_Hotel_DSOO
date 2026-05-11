@@ -1,7 +1,7 @@
 'use client';
 
 import { useReservasAlojamiento, TipoCliente } from '@/hooks/useReservasAlojamiento';
-import { BedDouble, Plus, ChevronLeft, Eye, X, ArrowLeft } from 'lucide-react';
+import { BedDouble, Plus, ChevronLeft, Eye, X, ArrowLeft, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 const badgeEstado = (e: string) => ({ CONFIRMADA: 'bg-green-100 text-green-700', PENDIENTE: 'bg-yellow-100 text-yellow-700', CANCELADA: 'bg-red-100 text-red-600', COMPLETADA: 'bg-luxury-champagne text-luxury-charcoal' }[e] ?? 'bg-luxury-champagne text-luxury-charcoal');
@@ -9,7 +9,7 @@ const badgeTipo = (t: TipoCliente) => ({ ESTANDAR: 'border-luxury-gold/20 bg-lux
 const etiquetaAloj = (t: string) => t.replace('HABITACION_', 'HAB. ').replace(/_/g, ' ');
 
 export default function ReservasAlojamiento() {
-  const { reservas, alojamientos, clientes, reglasUpgrade, vistaActiva, setVistaActiva, reservaSeleccionada, setReservaSeleccionada, mensaje, formCrear, preview, handleChangeCrear, handleSubmitCrear, cancelarReserva, getNombreCliente, getTipoCliente, getNumeroUnidad, getTipoAlojamiento, alojamientosDisponibles, clienteSeleccionado } = useReservasAlojamiento();
+  const { reservas, alojamientos, clientes, reglasUpgrade, vistaActiva, setVistaActiva, reservaSeleccionada, setReservaSeleccionada, mensaje, formCrear, preview, handleChangeCrear, handleSubmitCrear, cancelarReserva, modificarReserva, abrirEditar, formEditar, handleChangeEditar, getNombreCliente, getTipoCliente, getNumeroUnidad, getTipoAlojamiento, alojamientosDisponibles, clienteSeleccionado } = useReservasAlojamiento();
 
   return (
     <main className="min-h-screen bg-luxury-ivory px-6 py-10 md:px-10">
@@ -55,6 +55,7 @@ export default function ReservasAlojamiento() {
                       <td className="px-6 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeEstado(r.estado)}`}>{r.estado}</span></td>
                       <td className="px-6 py-4"><div className="flex gap-2">
                         <button onClick={() => { setReservaSeleccionada(r); setVistaActiva('detalle'); }} className="flex h-8 w-8 items-center justify-center rounded-xl border border-luxury-gold/30 text-luxury-charcoal/60 hover:bg-luxury-champagne"><Eye size={14} /></button>
+                        {r.estado !== 'CANCELADA' && r.estado !== 'COMPLETADA' && <button onClick={() => abrirEditar(r)} title="Modificar reserva" className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-500 hover:bg-blue-100"><Pencil size={14} /></button>}
                         {r.estado !== 'CANCELADA' && r.estado !== 'COMPLETADA' && <button onClick={() => cancelarReserva(r.id_reserva)} className="flex h-8 w-8 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-500 hover:bg-red-100"><X size={14} /></button>}
                       </div></td>
                     </tr>
@@ -108,6 +109,38 @@ export default function ReservasAlojamiento() {
                   </div>
                 )}
                 <div className="flex gap-3"><button type="submit" className="flex-1 rounded-2xl bg-luxury-black px-6 py-3 text-sm font-semibold text-luxury-gold hover:bg-luxury-charcoal">Confirmar Reserva</button><button type="button" onClick={() => setVistaActiva('lista')} className="rounded-2xl border border-luxury-gold/30 px-6 py-3 text-sm text-luxury-charcoal hover:bg-luxury-champagne/40">Cancelar</button></div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {vistaActiva === 'editar' && reservaSeleccionada && (
+          <div className="rounded-3xl border border-luxury-gold/20 bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-luxury-gold/15 px-8 py-5">
+              <button onClick={() => setVistaActiva('lista')} className="flex h-9 w-9 items-center justify-center rounded-xl border border-luxury-gold/20 hover:bg-luxury-champagne"><ChevronLeft size={16} /></button>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600"><Pencil size={18} className="text-white" /></div>
+              <div><h2 className="font-serif text-xl text-luxury-black">Modificar Reserva</h2><p className="text-xs text-luxury-charcoal/50">{reservaSeleccionada.codigo_confirmacion}</p></div>
+            </div>
+            <div className="p-8">
+              <form onSubmit={modificarReserva} className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div><label className="mb-2 block text-sm font-medium">Alojamiento *</label>
+                    <select name="id_alojamiento" value={formEditar.id_alojamiento} onChange={handleChangeEditar} required className="w-full rounded-2xl border border-luxury-gold/30 bg-luxury-ivory px-4 py-3 text-sm focus:border-luxury-gold focus:outline-none focus:ring-1 focus:ring-luxury-gold">
+                      <option value="">Seleccione...</option>
+                      {alojamientos.filter(a => a.estado === 'DISPONIBLE' || a.id_alojamiento === reservaSeleccionada.id_alojamiento).map(a => <option key={a.id_alojamiento} value={a.id_alojamiento}>{a.numero_unidad} — {etiquetaAloj(a.tipo)} — ${a.precio_base_noche}/noche</option>)}
+                    </select>
+                  </div>
+                  {(['fecha_check_in', 'fecha_check_out'] as const).map(f => (
+                    <div key={f}><label className="mb-2 block text-sm font-medium">{f === 'fecha_check_in' ? 'Check-in' : 'Check-out'} *</label>
+                      <input type="date" name={f} value={formEditar[f]} onChange={handleChangeEditar} required className="w-full rounded-2xl border border-luxury-gold/30 bg-luxury-ivory px-4 py-3 text-sm focus:border-luxury-gold focus:outline-none focus:ring-1 focus:ring-luxury-gold" /></div>
+                  ))}
+                  <div><label className="mb-2 block text-sm font-medium">Método de Pago</label>
+                    <select name="tipo_pago" value={formEditar.tipo_pago} onChange={handleChangeEditar} className="w-full rounded-2xl border border-luxury-gold/30 bg-luxury-ivory px-4 py-3 text-sm focus:border-luxury-gold focus:outline-none focus:ring-1 focus:ring-luxury-gold">
+                      <option value="">Sin cambio</option><option value="EFECTIVO">Efectivo</option><option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3"><button type="submit" className="flex-1 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700">Guardar Cambios</button><button type="button" onClick={() => setVistaActiva('lista')} className="rounded-2xl border border-luxury-gold/30 px-6 py-3 text-sm text-luxury-charcoal hover:bg-luxury-champagne/40">Cancelar</button></div>
               </form>
             </div>
           </div>

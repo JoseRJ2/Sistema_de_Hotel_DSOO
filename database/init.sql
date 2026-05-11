@@ -1,22 +1,13 @@
 -- ==============================================================================
 -- SISTEMA DE GESTIÓN HOTELERA
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> f86548b34cd74f4a4c72dde9c544b37e67c9f7f5
 -- Script INIT final
 -- MySQL 8+
 -- ==============================================================================
-
 CREATE DATABASE IF NOT EXISTS hotel_dsoo
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE hotel_dsoo;
-
--- ==============================================================================
--- 0. LIMPIEZA PREVIA
--- ==============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -588,11 +579,6 @@ SELECT
     'CANCELACION_VIP'
 FROM Rol r
 WHERE r.nombre = 'CLIENTE_VIP';
-<<<<<<< HEAD
-
-=======
-=======
->>>>>>> f86548b34cd74f4a4c72dde9c544b37e67c9f7f5
 -- Base de Datos sincronizada con Diagrama de Clases (XML/Draw.io)
 -- Creación inicial
 -- ==============================================================================
@@ -764,4 +750,3 @@ CREATE TABLE ServicioRestaurante (
     estado            ENUM('PENDIENTE', 'EN_USO', 'FINALIZADA', 'CANCELADA') NOT NULL DEFAULT 'PENDIENTE',
     FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE
 );
->>>>>>> main
