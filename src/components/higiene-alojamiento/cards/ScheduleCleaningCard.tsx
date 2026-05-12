@@ -1,14 +1,18 @@
-"use client";
+﻿"use client";
 
 import ScheduleCleaningForm from "@/components/higiene-alojamiento/forms/ScheduleCleaningForm";
 import type { CleaningScheduleFormValues } from "@/types/higiene-alojamiento/higiene-alojamiento.types";
 
 interface ScheduleCleaningCardProps {
+  minDate?: string;
+  maxDate?: string;
   onSubmit?: (values: CleaningScheduleFormValues) => void;
   onCancel?: () => void;
 }
 
 export default function ScheduleCleaningCard({
+  minDate,
+  maxDate,
   onSubmit,
   onCancel,
 }: ScheduleCleaningCardProps) {
@@ -20,9 +24,14 @@ export default function ScheduleCleaningCard({
             Programar limpieza
           </h3>
           <p className="mt-2 text-sm text-luxury-charcoal/80">
-            Define el horario de atención. Si la capacidad está saturada, después
-            podrás mostrar alternativas desde backend.
+            Define la fecha y el horario de atencion en un rango valido de tu
+            hospedaje.
           </p>
+          {minDate && maxDate ? (
+            <p className="mt-2 text-xs text-luxury-charcoal/70">
+              Puedes agendar entre {minDate} y {maxDate}.
+            </p>
+          ) : null}
         </div>
 
         {onCancel ? (
@@ -37,7 +46,11 @@ export default function ScheduleCleaningCard({
       </div>
 
       <div className="mt-5">
-        <ScheduleCleaningForm onSubmit={onSubmit} />
+        <ScheduleCleaningForm
+          minDate={minDate}
+          maxDate={maxDate}
+          onSubmit={onSubmit}
+        />
       </div>
     </article>
   );

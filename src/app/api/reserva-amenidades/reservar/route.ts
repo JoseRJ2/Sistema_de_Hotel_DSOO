@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { ReservarAmenidad } from "@/application/use-cases/reserva-amenidades/ReservarAmenidad";
 import { PrismaReservaAmenidadRepository } from "@/infrastructure/repositories/PrismaReservaAmenidadRepository";
 
@@ -25,9 +25,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error en POST reservar amenidad:", error);
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "No fue posible confirmar la reserva de amenidad.";
+
     return NextResponse.json(
-      { message: "No fue posible confirmar la reserva de amenidad." },
-      { status: 500 }
+      { message },
+      { status: 400 }
     );
   }
 }

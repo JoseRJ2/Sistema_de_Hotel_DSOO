@@ -12,6 +12,8 @@ export interface SuppliesConsumptionFormValues {
 
 interface SuppliesConsumptionFormProps {
   onSubmit?: (values: SuppliesConsumptionFormValues) => void;
+  submitLabel?: string;
+  isSubmitting?: boolean;
 }
 
 const initialValues: SuppliesConsumptionFormValues = {
@@ -24,6 +26,8 @@ const initialValues: SuppliesConsumptionFormValues = {
 
 export default function SuppliesConsumptionForm({
   onSubmit,
+  submitLabel = "Registrar insumos",
+  isSubmitting = false,
 }: SuppliesConsumptionFormProps) {
   const [values, setValues] =
     useState<SuppliesConsumptionFormValues>(initialValues);
@@ -133,9 +137,10 @@ export default function SuppliesConsumptionForm({
 
       <button
         type="submit"
-        className="rounded-xl bg-luxury-black px-5 py-3 font-semibold text-luxury-ivory transition hover:opacity-90"
+        disabled={isSubmitting}
+        className="rounded-xl bg-luxury-black px-5 py-3 font-semibold text-luxury-ivory transition hover:opacity-90 disabled:opacity-60"
       >
-        Registrar insumos
+        {submitLabel}
       </button>
     </form>
   );

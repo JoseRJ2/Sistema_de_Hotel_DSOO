@@ -1,28 +1,62 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { PrismaHigieneAlojamientoRepository } from "@/infrastructure/repositories/PrismaHigieneAlojamientoRepository";
 import { SaltarLimpiezaHoy } from "@/application/use-cases/higiene-alojamineto/SaltarLimpiezaHoy";
+import { DesactivarSaltarLimpiezaHoy } from "@/application/use-cases/higiene-alojamineto/DesactivarSaltarLimpiezaHoy";
+import { ObtenerResumenEstancia } from "@/application/use-cases/higiene-alojamineto/ObtenerResumenEstancia";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const reservaId = Number(body.reservaId);
 
     const repository = new PrismaHigieneAlojamientoRepository();
-    const useCase = new SaltarLimpiezaHoy(repository);
+    const resumenUseCase = new ObtenerResumenEstancia(repository);
+    const resumen = await resumenUseCase.execute(reservaId);
 
+    if (!resumen) {
+      return NextResponse.json(
+        { message: "No se encontro la reserva de la estancia." },
+        { status: 404 }
+      );
+    }
+
+    if (resumen.preferenciaHigieneActiva === "SALTAR_LIMPIEZA_HOY") {
+      const useCase = new DesactivarSaltarLimpiezaHoy(repository);
+      await useCase.execute({
+        reservaId,
+        observaciones:
+          body.observaciones ??
+          "Desactivado desde el panel del cliente.",
+      });
+
+      return NextResponse.json(
+        {
+          message:
+            "Se desactivo omitir limpieza por hoy. El personal retomara limpieza rutinaria si no hay otra preferencia activa.",
+          action: "deactivated",
+        },
+        { status: 200 }
+      );
+    }
+
+    const useCase = new SaltarLimpiezaHoy(repository);
     await useCase.execute({
-      reservaId: Number(body.reservaId),
+      reservaId,
       observaciones: body.observaciones,
     });
 
     return NextResponse.json(
-      { message: "La limpieza de hoy fue omitida correctamente." },
+      {
+        message: "La limpieza de hoy fue omitida correctamente.",
+        action: "activated",
+      },
       { status: 200 }
     );
   } catch (error) {
     console.error("Error en POST saltar-limpieza:", error);
 
     return NextResponse.json(
-      { message: "No fue posible omitir la limpieza de hoy." },
+      { message: "No fue posible actualizar la preferencia de limpieza de hoy." },
       { status: 500 }
     );
   }

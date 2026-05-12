@@ -43,7 +43,7 @@ export default function Home() {
     { href: "/tipos-clientes", icon: Crown, badge: "Fidelización", title: "Membresías y Clientes", desc: "Registra clientes y gestiona membresías." },
     { href: "/restaurante", icon: UtensilsCrossed, badge: "Restaurante", title: "Reservas de Restaurante", desc: "Gestiona turnos y disponibilidad en tiempo real." },
     { href: "/kids-club", icon: Smile, badge: "Entretenimiento", title: "Kids Club", desc: "Inscripción y control de actividades infantiles." },
-    { href: "/higiene-alojamiento", icon: Sparkles, badge: "Operaciones", title: "Higiene y Alojamiento", desc: "Ciclo de limpieza y privacidad de habitaciones." },
+    { href: "/higiene", icon: Sparkles, badge: "Operaciones", title: "Higiene y Alojamiento", desc: "Ciclo de limpieza y privacidad de habitaciones." },
     { href: "/bitacora-restaurante", icon: ClipboardList, badge: "Bitácora", title: "Bitácora del Restaurante", desc: "Registro de check-in y estado de turnos." },
   ];
 

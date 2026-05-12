@@ -13,10 +13,16 @@ export interface SessionUser {
   tipo_cliente: 'ESTANDAR' | 'PREMIUM' | 'VIP' | null;
 }
 
+interface LoginResult {
+  ok: boolean;
+  usuario?: SessionUser;
+  error?: string;
+}
+
 interface AuthContextType {
   usuario: SessionUser | null;
   cargando: boolean;
-  login: (correo: string, contrasena: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (correo: string, contrasena: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   esEmpleado: boolean;
   esCliente: boolean;
@@ -38,9 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     finally { setCargando(false); }
   }, []);
 
-  useEffect(() => { cargarSesion(); }, [cargarSesion]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void cargarSesion();
+  }, [cargarSesion]);
 
-  const login = async (correo: string, contrasena: string) => {
+  const login = async (correo: string, contrasena: string): Promise<LoginResult> => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -48,8 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { ok: false, error: data.error };
-      setUsuario(data.usuario);
-      return { ok: true };
+
+      const loggedUser = data.usuario as SessionUser;
+      setUsuario(loggedUser);
+      return { ok: true, usuario: loggedUser };
     } catch { return { ok: false, error: 'Error de conexión' }; }
   };
 
