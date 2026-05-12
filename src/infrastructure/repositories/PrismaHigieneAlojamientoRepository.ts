@@ -1,9 +1,11 @@
-import { withPrismaRetry } from "@/lib/prisma";
+﻿import { withPrismaRetry } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
 import type {
   CambiarPrivacidadInput,
   FinalizarLimpiezaInput,
   IHigieneAlojamientoRepository,
   IniciarLimpiezaInput,
+  PreferenciaHigieneActiva,
   ProgramarLimpiezaInput,
   RegistrarInsumosInput,
   ResumenEstanciaDTO,
@@ -11,9 +13,83 @@ import type {
   NotificacionDTO,
 } from "@/domain/interfaces/repositories/IHigieneAlojamientoRepository";
 
+type PrismaTxClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$use" | "$extends"
+>;
+
 export class PrismaHigieneAlojamientoRepository
   implements IHigieneAlojamientoRepository
 {
+  private async cancelarSolicitudesActivas(
+    prisma: PrismaClient | PrismaTxClient,
+    reservaId: number,
+    tipos: Array<"PROGRAMAR_LIMPIEZA" | "NO_MOLESTAR" | "SALTAR_LIMPIEZA_HOY">,
+    observaciones?: string
+  ): Promise<void> {
+    const solicitudes = await prisma.solicitudServicioAlojamiento.findMany({
+      where: {
+        id_reserva: reservaId,
+        tipo_solicitud: {
+          in: tipos,
+        },
+        estado_solicitud: {
+          in: ["SOLICITADA", "VALIDADA", "REPROGRAMADA", "ATENDIDA"],
+        },
+      },
+      orderBy: {
+        fecha_solicitud: "desc",
+      },
+      take: 5,
+    });
+
+    for (const solicitud of solicitudes) {
+      await prisma.solicitudServicioAlojamiento.update({
+        where: {
+          id_solicitud: solicitud.id_solicitud,
+        },
+        data: {
+          estado_solicitud: "CANCELADA",
+          observaciones: observaciones ?? solicitud.observaciones,
+        },
+      });
+    }
+  }
+
+  private async obtenerPreferenciaActiva(
+    prisma: PrismaClient | PrismaTxClient,
+    reservaId: number,
+    privacidadActiva: boolean,
+    estadoGeneral: string
+  ): Promise<PreferenciaHigieneActiva> {
+    if (privacidadActiva || estadoGeneral === "NO_MOLESTAR") {
+      return "NO_MOLESTAR";
+    }
+
+    const solicitudActiva = await prisma.solicitudServicioAlojamiento.findFirst({
+      where: {
+        id_reserva: reservaId,
+        OR: [
+          {
+            tipo_solicitud: "PROGRAMAR_LIMPIEZA",
+            estado_solicitud: {
+              in: ["VALIDADA", "REPROGRAMADA"],
+            },
+          },
+          {
+            tipo_solicitud: "SALTAR_LIMPIEZA_HOY",
+            estado_solicitud: "ATENDIDA",
+          },
+        ],
+      },
+      orderBy: {
+        fecha_solicitud: "desc",
+      },
+    });
+
+    return (solicitudActiva?.tipo_solicitud as PreferenciaHigieneActiva) ?? null;
+  }
+
   async obtenerResumenEstancia(
     reservaId: number
   ): Promise<ResumenEstanciaDTO | null> {
@@ -41,6 +117,13 @@ export class PrismaHigieneAlojamientoRepository
           return null;
         }
 
+        const preferenciaHigieneActiva = await this.obtenerPreferenciaActiva(
+          prisma,
+          reserva.id_reserva,
+          reserva.Alojamiento.privacidad_activa,
+          reserva.Alojamiento.estado
+        );
+
         return {
           reservaId: reserva.id_reserva,
           alojamientoId: reserva.Alojamiento.id_alojamiento,
@@ -56,6 +139,7 @@ export class PrismaHigieneAlojamientoRepository
           fechaCheckin: reserva.fecha_checkin,
           fechaCheckout: reserva.fecha_checkout,
           numeroHuespedes: reserva.numero_huespedes,
+          preferenciaHigieneActiva,
         };
       });
     } catch (error) {
@@ -114,41 +198,107 @@ export class PrismaHigieneAlojamientoRepository
           throw new Error("La reserva no existe.");
         }
 
-        await prisma.$transaction([
-          prisma.alojamiento.update({
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["PROGRAMAR_LIMPIEZA", "SALTAR_LIMPIEZA_HOY"],
+            "Se reemplazo por la preferencia No molestar."
+          );
+
+          await tx.alojamiento.update({
             where: {
               id_alojamiento: reserva.id_alojamiento,
             },
             data: {
               privacidad_activa: true,
               estado: "NO_MOLESTAR",
+              estado_higiene: "EN_ESPERA",
             },
-          }),
+          });
 
-          prisma.solicitudServicioAlojamiento.create({
+          await tx.solicitudServicioAlojamiento.create({
             data: {
               id_reserva: input.reservaId,
               tipo_solicitud: "NO_MOLESTAR",
               estado_solicitud: "ATENDIDA",
               observaciones: input.observaciones,
             },
-          }),
+          });
 
-          prisma.notificacion.create({
+          await tx.notificacion.create({
             data: {
               id_usuario: reserva.Cliente.Usuario.id_usuario,
               tipo: "SISTEMA",
               asunto: "Modo privacidad activado",
               mensaje:
-                "Tu alojamiento fue marcado como No molestar y se bloqueó temporalmente su atención operativa.",
+                "Tu alojamiento fue marcado como No molestar y se bloqueo temporalmente su atencion operativa.",
               destinatario: reserva.Cliente.Usuario.correo_electronico,
               enviada: true,
             },
-          }),
-        ]);
+          });
+        });
       });
     } catch (error) {
       console.error("Error en activarNoMolestar:", error);
+      throw error;
+    }
+  }
+
+  async desactivarNoMolestar(input: CambiarPrivacidadInput): Promise<void> {
+    try {
+      await withPrismaRetry(async (prisma) => {
+        const reserva = await prisma.reserva.findUnique({
+          where: {
+            id_reserva: input.reservaId,
+          },
+          include: {
+            Cliente: {
+              include: {
+                Usuario: true,
+              },
+            },
+          },
+        });
+
+        if (!reserva) {
+          throw new Error("La reserva no existe.");
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["NO_MOLESTAR"],
+            input.observaciones ?? "Preferencia desactivada por el cliente."
+          );
+
+          await tx.alojamiento.update({
+            where: {
+              id_alojamiento: reserva.id_alojamiento,
+            },
+            data: {
+              privacidad_activa: false,
+              estado: "OCUPADA",
+              estado_higiene: "EN_ESPERA",
+            },
+          });
+
+          await tx.notificacion.create({
+            data: {
+              id_usuario: reserva.Cliente.Usuario.id_usuario,
+              tipo: "SISTEMA",
+              asunto: "Modo privacidad desactivado",
+              mensaje:
+                "Desactivaste No molestar. Si no hay otra preferencia activa, el personal retomara la limpieza rutinaria.",
+              destinatario: reserva.Cliente.Usuario.correo_electronico,
+              enviada: true,
+            },
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error en desactivarNoMolestar:", error);
       throw error;
     }
   }
@@ -174,41 +324,109 @@ export class PrismaHigieneAlojamientoRepository
           throw new Error("La reserva no existe.");
         }
 
-        await prisma.$transaction([
-          prisma.alojamiento.update({
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["PROGRAMAR_LIMPIEZA", "NO_MOLESTAR"],
+            "Se reemplazo por la preferencia de omitir limpieza."
+          );
+
+          await tx.alojamiento.update({
             where: {
               id_alojamiento: reserva.id_alojamiento,
             },
             data: {
               privacidad_activa: false,
+              estado: "OCUPADA",
               estado_higiene: "SUCIA",
             },
-          }),
+          });
 
-          prisma.solicitudServicioAlojamiento.create({
+          await tx.solicitudServicioAlojamiento.create({
             data: {
               id_reserva: input.reservaId,
               tipo_solicitud: "SALTAR_LIMPIEZA_HOY",
               estado_solicitud: "ATENDIDA",
               observaciones: input.observaciones,
             },
-          }),
+          });
 
-          prisma.notificacion.create({
+          await tx.notificacion.create({
             data: {
               id_usuario: reserva.Cliente.Usuario.id_usuario,
               tipo: "SISTEMA",
               asunto: "Limpieza omitida hoy",
               mensaje:
-                "La limpieza del alojamiento fue omitida por hoy según tu solicitud.",
+                "La limpieza del alojamiento fue omitida por hoy segun tu solicitud.",
               destinatario: reserva.Cliente.Usuario.correo_electronico,
               enviada: true,
             },
-          }),
-        ]);
+          });
+        });
       });
     } catch (error) {
       console.error("Error en saltarLimpiezaHoy:", error);
+      throw error;
+    }
+  }
+
+  async desactivarSaltarLimpiezaHoy(
+    input: CambiarPrivacidadInput
+  ): Promise<void> {
+    try {
+      await withPrismaRetry(async (prisma) => {
+        const reserva = await prisma.reserva.findUnique({
+          where: {
+            id_reserva: input.reservaId,
+          },
+          include: {
+            Cliente: {
+              include: {
+                Usuario: true,
+              },
+            },
+          },
+        });
+
+        if (!reserva) {
+          throw new Error("La reserva no existe.");
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["SALTAR_LIMPIEZA_HOY"],
+            input.observaciones ?? "Preferencia desactivada por el cliente."
+          );
+
+          await tx.alojamiento.update({
+            where: {
+              id_alojamiento: reserva.id_alojamiento,
+            },
+            data: {
+              privacidad_activa: false,
+              estado: "OCUPADA",
+              estado_higiene: "EN_ESPERA",
+            },
+          });
+
+          await tx.notificacion.create({
+            data: {
+              id_usuario: reserva.Cliente.Usuario.id_usuario,
+              tipo: "SISTEMA",
+              asunto: "Omitir limpieza desactivado",
+              mensaje:
+                "Se desactivo la opcion de omitir limpieza. Si no hay otra preferencia activa, el personal realizara limpieza rutinaria.",
+              destinatario: reserva.Cliente.Usuario.correo_electronico,
+              enviada: true,
+            },
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error en desactivarSaltarLimpiezaHoy:", error);
       throw error;
     }
   }
@@ -234,18 +452,26 @@ export class PrismaHigieneAlojamientoRepository
           throw new Error("La reserva no existe.");
         }
 
-        await prisma.$transaction([
-          prisma.alojamiento.update({
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["SALTAR_LIMPIEZA_HOY", "NO_MOLESTAR", "PROGRAMAR_LIMPIEZA"],
+            "Se reemplazo por una nueva programacion de limpieza."
+          );
+
+          await tx.alojamiento.update({
             where: {
               id_alojamiento: reserva.id_alojamiento,
             },
             data: {
               privacidad_activa: false,
+              estado: "OCUPADA",
               estado_higiene: "PROGRAMADA",
             },
-          }),
+          });
 
-          prisma.solicitudServicioAlojamiento.create({
+          await tx.solicitudServicioAlojamiento.create({
             data: {
               id_reserva: input.reservaId,
               tipo_solicitud: "PROGRAMAR_LIMPIEZA",
@@ -254,9 +480,9 @@ export class PrismaHigieneAlojamientoRepository
               horario_programado: input.horarioProgramado,
               observaciones: input.observaciones,
             },
-          }),
+          });
 
-          prisma.notificacion.create({
+          await tx.notificacion.create({
             data: {
               id_usuario: reserva.Cliente.Usuario.id_usuario,
               tipo: "SISTEMA",
@@ -265,11 +491,71 @@ export class PrismaHigieneAlojamientoRepository
               destinatario: reserva.Cliente.Usuario.correo_electronico,
               enviada: true,
             },
-          }),
-        ]);
+          });
+        });
       });
     } catch (error) {
       console.error("Error en programarLimpieza:", error);
+      throw error;
+    }
+  }
+
+  async desactivarProgramarLimpieza(
+    input: CambiarPrivacidadInput
+  ): Promise<void> {
+    try {
+      await withPrismaRetry(async (prisma) => {
+        const reserva = await prisma.reserva.findUnique({
+          where: {
+            id_reserva: input.reservaId,
+          },
+          include: {
+            Cliente: {
+              include: {
+                Usuario: true,
+              },
+            },
+          },
+        });
+
+        if (!reserva) {
+          throw new Error("La reserva no existe.");
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await this.cancelarSolicitudesActivas(
+            tx,
+            input.reservaId,
+            ["PROGRAMAR_LIMPIEZA"],
+            input.observaciones ?? "Preferencia desactivada por el cliente."
+          );
+
+          await tx.alojamiento.update({
+            where: {
+              id_alojamiento: reserva.id_alojamiento,
+            },
+            data: {
+              privacidad_activa: false,
+              estado: "OCUPADA",
+              estado_higiene: "EN_ESPERA",
+            },
+          });
+
+          await tx.notificacion.create({
+            data: {
+              id_usuario: reserva.Cliente.Usuario.id_usuario,
+              tipo: "SISTEMA",
+              asunto: "Programacion de limpieza desactivada",
+              mensaje:
+                "Se desactivo la limpieza programada. Si no hay otra preferencia activa, el personal retomara limpieza rutinaria.",
+              destinatario: reserva.Cliente.Usuario.correo_electronico,
+              enviada: true,
+            },
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error en desactivarProgramarLimpieza:", error);
       throw error;
     }
   }
@@ -335,7 +621,7 @@ export class PrismaHigieneAlojamientoRepository
               tipo: "SISTEMA",
               asunto: "Limpieza en proceso",
               mensaje:
-                "Tu alojamiento está siendo atendido por el personal de limpieza.",
+                "Tu alojamiento estÃ¡ siendo atendido por el personal de limpieza.",
               destinatario: reserva.Cliente.Usuario.correo_electronico,
               enviada: true,
             },
@@ -543,6 +829,7 @@ export class PrismaHigieneAlojamientoRepository
 
           return {
             id: String(alojamiento.id_alojamiento),
+            reservaId: reserva?.id_reserva ?? null,
             nombre: alojamiento.numero_o_nombre,
             tipoAlojamiento: alojamiento.tipo.includes("VILLA")
               ? "VILLA"
@@ -562,3 +849,6 @@ export class PrismaHigieneAlojamientoRepository
     }
   }
 }
+
+
+

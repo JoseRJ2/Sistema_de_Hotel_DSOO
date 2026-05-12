@@ -6,6 +6,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LogIn, Eye, EyeOff } from 'lucide-react';
 
+function getPostLoginRoute(payload: { es_empleado: boolean; id_cliente: number | null }): string {
+  if (payload.id_cliente) return '/dashboard-cliente';
+  return payload.es_empleado ? '/' : '/dashboard-cliente';
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -19,9 +24,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setCargando(true);
+
     const result = await login(correo, contrasena);
+
     setCargando(false);
-    if (result.ok) { router.push('/'); } else { setError(result.error ?? 'Error al iniciar sesión'); }
+
+    if (!result.ok || !result.usuario) {
+      setError(result.error ?? 'Error al iniciar sesión');
+      return;
+    }
+
+    const redirectRoute = getPostLoginRoute({
+      es_empleado: result.usuario.es_empleado,
+      id_cliente: result.usuario.id_cliente,
+    });
+    router.push(redirectRoute);
   };
 
   return (

@@ -17,13 +17,13 @@ export const higieneAlojamientoMock: HigieneAlojamientoMockData = {
     {
       id: "step-1",
       title: "Solicitud recibida",
-      description: "El cliente solicitó servicio de limpieza desde la app.",
+      description: "El cliente solicito servicio de limpieza desde la app.",
       completed: true,
     },
     {
       id: "step-2",
       title: "Programada",
-      description: "La limpieza fue asignada en un horario válido.",
+      description: "La limpieza fue asignada en un horario valido.",
       completed: true,
       current: true,
     },
@@ -41,7 +41,7 @@ export const higieneAlojamientoMock: HigieneAlojamientoMockData = {
     },
     {
       id: "step-5",
-      title: "Reposición de insumos",
+      title: "Reposicion de insumos",
       description: "Se registran toallas, jabones y otros suministros.",
       completed: false,
     },
@@ -55,6 +55,7 @@ export const higieneAlojamientoMock: HigieneAlojamientoMockData = {
   pendingUnits: [
     {
       id: "unit-001",
+      reservaId: 1,
       nombre: "Villa Premium Esmeralda",
       tipoAlojamiento: "VILLA",
       estado: "PROGRAMADA",
@@ -63,7 +64,8 @@ export const higieneAlojamientoMock: HigieneAlojamientoMockData = {
     },
     {
       id: "unit-002",
-      nombre: "Habitación 204",
+      reservaId: 2,
+      nombre: "Habitacion 204",
       tipoAlojamiento: "HABITACION",
       estado: "SUCIA",
       prioridad: false,
@@ -71,7 +73,8 @@ export const higieneAlojamientoMock: HigieneAlojamientoMockData = {
     },
     {
       id: "unit-003",
-      nombre: "Habitación 117",
+      reservaId: 3,
+      nombre: "Habitacion 117",
       tipoAlojamiento: "HABITACION",
       estado: "NO_MOLESTAR",
       prioridad: false,

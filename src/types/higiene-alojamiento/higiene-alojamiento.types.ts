@@ -42,6 +42,7 @@ export interface CleaningTimelineItem {
 
 export interface PendingCleaningUnit {
   id: string;
+  reservaId: number | null;
   nombre: string;
   tipoAlojamiento: TipoAlojamiento;
   estado: EstadoHigiene;

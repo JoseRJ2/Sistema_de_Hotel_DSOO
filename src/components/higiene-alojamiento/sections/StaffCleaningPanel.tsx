@@ -1,23 +1,29 @@
 "use client";
 
 import PendingUnitsCard from "@/components/higiene-alojamiento/cards/PendingUnitsCard";
-import SuppliesConsumptionCard from "@/components/higiene-alojamiento/cards/SuppliesConsumptionCard";
 import type { SuppliesConsumptionFormValues } from "@/components/higiene-alojamiento/forms/SuppliesConsumptionForm";
 import SectionHeader from "@/components/higiene-alojamiento/shared/SectionHeader";
 import type { PendingCleaningUnit } from "@/types/higiene-alojamiento/higiene-alojamiento.types";
 
 interface StaffCleaningPanelProps {
   units: PendingCleaningUnit[];
-  onStartCleaning: () => Promise<void>;
-  onRegisterSupplies: (values: SuppliesConsumptionFormValues) => Promise<void>;
-  onFinishCleaning: () => Promise<void>;
+  activeUnitId: string | null;
+  processingUnitId: string | null;
+  onStartCleaning: (unit: PendingCleaningUnit) => Promise<void>;
+  onCompleteCleaning: (
+    unit: PendingCleaningUnit,
+    values: SuppliesConsumptionFormValues
+  ) => Promise<void>;
+  onCancelActiveUnit: () => void;
 }
 
 export default function StaffCleaningPanel({
   units,
+  activeUnitId,
+  processingUnitId,
   onStartCleaning,
-  onRegisterSupplies,
-  onFinishCleaning,
+  onCompleteCleaning,
+  onCancelActiveUnit,
 }: StaffCleaningPanelProps) {
   return (
     <section className="space-y-6">
@@ -28,11 +34,12 @@ export default function StaffCleaningPanel({
 
       <PendingUnitsCard
         units={units}
+        activeUnitId={activeUnitId}
+        processingUnitId={processingUnitId}
         onStartCleaning={onStartCleaning}
-        onFinishCleaning={onFinishCleaning}
+        onCompleteCleaning={onCompleteCleaning}
+        onCancelActiveUnit={onCancelActiveUnit}
       />
-
-      <SuppliesConsumptionCard onSubmit={onRegisterSupplies} />
     </section>
   );
 }

@@ -3,7 +3,7 @@
   IHigieneAlojamientoRepository,
 } from "@/domain/interfaces/repositories/IHigieneAlojamientoRepository";
 
-export class DesactivarNoMolestar {
+export class DesactivarProgramarLimpieza {
   constructor(private readonly repository: IHigieneAlojamientoRepository) {}
 
   async execute(input: CambiarPrivacidadInput): Promise<void> {
@@ -12,9 +12,9 @@ export class DesactivarNoMolestar {
         throw new Error("La reserva es obligatoria.");
       }
 
-      await this.repository.desactivarNoMolestar(input);
+      await this.repository.desactivarProgramarLimpieza(input);
     } catch (error) {
-      console.error("Error en DesactivarNoMolestar:", error);
+      console.error("Error en DesactivarProgramarLimpieza:", error);
       throw error;
     }
   }

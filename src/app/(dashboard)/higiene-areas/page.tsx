@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AreaChecklistPanel from "@/components/higiene-areas/sections/AreaChecklistPanel";
 import AreaManagementPanel from "@/components/higiene-areas/sections/AreaManagementPanel";
@@ -84,6 +85,7 @@ export default function HigieneAreasPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAreas();
   }, [loadAreas]);
 
@@ -250,6 +252,10 @@ export default function HigieneAreasPage() {
   return (
     <main className="min-h-screen bg-luxury-ivory px-6 py-10 md:px-10">
       <div className="mx-auto max-w-7xl space-y-10">
+        <Link href="/higiene" className="text-sm font-semibold text-luxury-gold">
+          Volver a operaciones de higiene
+        </Link>
+
         <header className="rounded-3xl border border-luxury-gold/25 bg-white p-8 shadow-sm">
           <p className="text-sm uppercase tracking-[0.25em] text-luxury-charcoal/60">
             Gestión hotelera

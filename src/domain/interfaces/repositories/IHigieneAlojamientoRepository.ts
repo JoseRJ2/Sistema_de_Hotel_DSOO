@@ -1,3 +1,9 @@
+export type PreferenciaHigieneActiva =
+  | "NO_MOLESTAR"
+  | "SALTAR_LIMPIEZA_HOY"
+  | "PROGRAMAR_LIMPIEZA"
+  | null;
+
 export interface ResumenEstanciaDTO {
   reservaId: number;
   alojamientoId: number;
@@ -13,6 +19,7 @@ export interface ResumenEstanciaDTO {
   fechaCheckin: Date;
   fechaCheckout: Date;
   numeroHuespedes: number;
+  preferenciaHigieneActiva: PreferenciaHigieneActiva;
 }
 
 export interface CambiarPrivacidadInput {
@@ -53,6 +60,7 @@ export interface FinalizarLimpiezaInput {
 
 export interface UnidadPendienteDTO {
   id: string;
+  reservaId: number | null;
   nombre: string;
   tipoAlojamiento: "HABITACION" | "VILLA";
   estado: string;
@@ -73,10 +81,13 @@ export interface IHigieneAlojamientoRepository {
   ): Promise<ResumenEstanciaDTO | null>;
 
   activarNoMolestar(input: CambiarPrivacidadInput): Promise<void>;
+  desactivarNoMolestar(input: CambiarPrivacidadInput): Promise<void>;
 
   saltarLimpiezaHoy(input: CambiarPrivacidadInput): Promise<void>;
+  desactivarSaltarLimpiezaHoy(input: CambiarPrivacidadInput): Promise<void>;
 
   programarLimpieza(input: ProgramarLimpiezaInput): Promise<void>;
+  desactivarProgramarLimpieza(input: CambiarPrivacidadInput): Promise<void>;
 
   iniciarLimpieza(input: IniciarLimpiezaInput): Promise<void>;
 
