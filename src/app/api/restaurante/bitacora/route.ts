@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withPrismaRetry } from '@/lib/prisma';
 
 /**
- * Mapeo de Clase: RegistroAuditoria (Entidad)
  * Método: buscarPorFechas(fechaInicio, fechaFin)
  */
 async function buscarPorFechas(prisma: any, inicio: Date, fin: Date) {
