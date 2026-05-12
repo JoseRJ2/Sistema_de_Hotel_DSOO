@@ -1,5 +1,6 @@
 'use client';
-
+import Link from 'next/link';
+import { X } from 'lucide-react';
 import { useReservaRestaurante } from "@/hooks/useReservaRestaurante";
 
 export default function ReservarRestaurantePage() {
@@ -111,14 +112,23 @@ export default function ReservarRestaurantePage() {
               </div>
             </div>
 
-            <div className="pt-6">
-              <button 
-                type="submit" 
-                disabled={!formData.turno}
-                className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-bold py-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md shadow-amber-500/20"
+            <div className="flex flex-col sm:flex-row gap-4 mt-8">
+              {/* Botón de Confirmar (el que ya tienes) */}
+              <button
+                type="submit"
+                className="flex-1 bg-luxury-gold text-white py-3 rounded-xl font-semibold hover:bg-luxury-gold/90 transition-all shadow-lg"
               >
-                CONFIRMAR RESERVACIÓN
+                Confirmar Reserva
               </button>
+
+              {/* BOTÓN DE CANCELAR (Flujo S1) */}
+              <Link
+                href="/dashboard-cliente"
+                className="flex-1 flex items-center justify-center gap-2 border border-luxury-charcoal/20 text-luxury-charcoal/60 py-3 rounded-xl font-semibold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
+              >
+                <X size={18} />
+                Cancelar Operación
+              </Link>
             </div>
           </form>
         </div>
